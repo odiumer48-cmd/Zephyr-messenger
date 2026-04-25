@@ -1324,6 +1324,12 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        // ================================================================
+// ДАННЫЕ ДЛЯ TELEGRAM BOT API
+// ================================================================
+const BOT_TOKEN = 'ВАШ_НОВЫЙ_ТОКЕН_БОТА'; // Замените на реальный токен
+const FILE_UPLOAD_URL = `https://api.telegram.org/bot${8587742999:AAGlsqyMqze1uvJzhLUeFStzGwmPBlyzhFw}/sendDocument`;
+const CHANNEL_ID = '-1003968376385'; // ID вашего приватного канала
         // Storage не используется
 
         // ================================================================
