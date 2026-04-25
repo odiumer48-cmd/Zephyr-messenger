@@ -1275,15 +1275,6 @@
         </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО: УПРАВЛЕНИЕ ГРУППОЙ (для создателя) -->
-    <div class="modal-overlay" id="manage-group-modal">
-        <div class="modal">
-            <h3>⚙️ Управление группой</h3>
-            <div id="manage-group-content"></div>
-            <button class="btn btn-link" onclick="closeManageGroupModal()" style="width:100%;">Закрыть</button>
-        </div>
-    </div>
-
     <script type="module">
         // ================================================================
         // ИМПОРТЫ FIREBASE SDK
@@ -1352,7 +1343,6 @@
         window.selectedGroupMembers = [];
         window.allUsersCache = [];
         window.typingTimeout = null;
-        window.currentMessagesQuery = null;
         window.currentMessagesUnsubscribe = null;
         window.currentTypingUnsubscribe = null;
         window.currentStatusUnsubscribe = null;
@@ -1361,6 +1351,7 @@
         window.blockingUserId = null;
         window.blockingUserName = null;
         window.searchDebounceTimeout = null;
+        window.beforeUnloadHandler = null;
 
         // Стили аватаров DiceBear
         const avatarStylesList = ['initials', 'bottts', 'avataaars', 'lorelei', 'pixel-art', 'identicon', 'rings', 'thumbs'];
@@ -1451,14 +1442,10 @@
             try {
                 let userCredential;
                 if (window.isLoginMode) {
-                    // Вход в существующий аккаунт
                     userCredential = await signInWithEmailAndPassword(auth, email, password);
                 } else {
-                    // Регистрация нового аккаунта
                     userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                    // Обновляем профиль в Auth
                     await updateProfile(userCredential.user, { displayName: nickname });
-                    // Создаём документ пользователя в Firestore
                     await setDoc(doc(db, "users", userCredential.user.uid), {
                         nickname: nickname,
                         email: email,
@@ -1474,13 +1461,11 @@
         };
 
         window.logout = async function() {
-            // Устанавливаем статус "офлайн" перед выходом
             if (window.currentUser) {
                 await setDoc(doc(db, "status", window.currentUser.uid), {
                     online: false,
                     lastSeen: serverTimestamp()
                 }, { merge: true });
-                // Удаляем статус печати
                 await deleteDoc(doc(db, "status", window.currentUser.uid + '_typing')).catch(() => {});
             }
             await signOut(auth);
@@ -1517,7 +1502,6 @@
                 timestamp: serverTimestamp()
             }, { merge: true });
 
-            // Автоматически сбрасываем статус печати через 3 секунды бездействия
             if (window.typingTimeout) clearTimeout(window.typingTimeout);
             window.typingTimeout = setTimeout(async () => {
                 await deleteDoc(doc(db, "status", window.currentUser.uid + '_typing')).catch(() => {});
@@ -1527,7 +1511,6 @@
         function watchTypingStatus(chatId) {
             if (!window.currentChat) return;
             
-            // Отписываемся от предыдущей подписки если есть
             if (window.currentTypingUnsubscribe) {
                 window.currentTypingUnsubscribe();
                 window.currentTypingUnsubscribe = null;
@@ -1552,10 +1535,8 @@
         // ПОИСК ПОЛЬЗОВАТЕЛЕЙ (ТОЛЬКО ПО НИКНЕЙМУ) — С ДЕБАУНСОМ
         // ================================================================
         window.searchUsers = function() {
-            // Очищаем предыдущий таймаут для дебаунса
             if (window.searchDebounceTimeout) clearTimeout(window.searchDebounceTimeout);
             
-            // Устанавливаем новый таймаут на 300мс
             window.searchDebounceTimeout = setTimeout(async () => {
                 const searchText = document.getElementById('search-user-input').value.trim().toLowerCase();
                 const resultsDiv = document.getElementById('search-results');
@@ -1570,9 +1551,7 @@
 
                 usersSnapshot.forEach(docSnap => {
                     const userData = docSnap.data();
-                    // Пропускаем себя
                     if (docSnap.id === window.currentUser?.uid) return;
-                    // Ищем ТОЛЬКО по никнейму
                     const userNickname = (userData.nickname || '').toLowerCase();
                     if (userNickname.includes(searchText)) {
                         results.push({ uid: docSnap.id, ...userData });
@@ -1615,7 +1594,6 @@
             document.getElementById('group-member-results').innerHTML = '';
             window.selectedGroupMembers = [];
             renderSelectedMembers();
-            // Загружаем всех пользователей для поиска
             const usersSnapshot = await getDocs(collection(db, "users"));
             window.allUsersCache = [];
             usersSnapshot.forEach(docSnap => {
@@ -1673,7 +1651,6 @@
             const groupName = document.getElementById('group-name').value.trim() || 'Новая группа';
             const memberIds = [window.currentUser.uid, ...window.selectedGroupMembers.map(m => m.uid)];
 
-            // Создаём документ чата
             const chatRef = doc(collection(db, "chats"));
             await setDoc(chatRef, {
                 name: groupName,
@@ -1682,7 +1659,6 @@
                 createdAt: serverTimestamp()
             });
 
-            // Добавляем всех участников в подколлекцию members с ролями
             const batch = writeBatch(db);
             memberIds.forEach(uid => {
                 const role = uid === window.currentUser.uid ? 'creator' : 'member';
@@ -1715,28 +1691,24 @@
         // ================================================================
         async function canDeleteMessageInGroup(groupId, messageUid) {
             if (!window.currentUser) return false;
-            // Создатель группы может удалять любые сообщения
             const myRole = await getUserRoleInGroup(groupId, window.currentUser.uid);
             if (myRole === 'creator') return true;
-            // Админ может удалять сообщения обычных участников
             if (myRole === 'admin' && messageUid !== window.currentUser.uid) {
                 const targetRole = await getUserRoleInGroup(groupId, messageUid);
                 return targetRole === 'member';
             }
-            // Обычный участник может удалять только свои
             return messageUid === window.currentUser.uid;
         }
 
         // ================================================================
-        // УПРАВЛЕНИЕ ЧАТАМИ
+        // УПРАВЛЕНИЕ ЧАТАМИ — ВОЗВРАЩЁН СТАРЫЙ МЕТОД getChatId()
         // ================================================================
         function getChatId() {
             if (!window.currentChat || !window.currentUser) return null;
             // Групповой чат использует свой ID
             if (window.currentChat.groupId) return window.currentChat.groupId;
-            // ИСПРАВЛЕНО: Используем localeCompare для корректной сортировки строк
-            const sortedUids = [window.currentUser.uid, window.currentChat.uid].sort((a, b) => a.localeCompare(b));
-            return sortedUids.join('_');
+            // СТАРЫЙ МЕТОД: сортировка без компаратора для совместимости с существующими чатами
+            return [window.currentUser.uid, window.currentChat.uid].sort().join('_');
         }
 
         window.startChat = function(uid, nickname, email) {
@@ -1765,7 +1737,6 @@
         }
 
         async function openChatScreen(displayName, avatarUrl, isGroupChat) {
-            // Скрываем приветственный экран, показываем чат
             document.getElementById('welcome-screen').style.display = 'none';
             document.getElementById('chat-screen').style.display = 'flex';
             document.getElementById('chat-user-name').textContent = displayName;
@@ -1783,16 +1754,9 @@
                 updateChatHeaderStatus(statusData);
             }
 
-            // На мобилках показываем чат, скрываем боковую панель
             document.getElementById('main-container').classList.add('chat-open');
-
-            // Запускаем отслеживание печати
             watchTypingStatus(chatId);
-
-            // Загружаем сообщения
             loadMessages();
-
-            // Обновляем список контактов
             loadContacts();
         }
 
@@ -1812,14 +1776,12 @@
             }
         }
 
-        // Кнопка "Назад" на мобильных устройствах
         window.goBackToChatList = function() {
             document.getElementById('main-container').classList.remove('chat-open');
             window.currentChat = null;
             document.getElementById('chat-screen').style.display = 'none';
             document.getElementById('welcome-screen').style.display = 'block';
             
-            // Отписываемся от подписок при уходе из чата
             if (window.currentMessagesUnsubscribe) {
                 window.currentMessagesUnsubscribe();
                 window.currentMessagesUnsubscribe = null;
@@ -1842,15 +1804,12 @@
                 collection(db, `chats/${chatId}/messages`),
                 orderBy("timestamp", "asc")
             );
-            window.currentMessagesQuery = messagesQuery;
 
-            // Отписываемся от предыдущей подписки если есть
             if (window.currentMessagesUnsubscribe) {
                 window.currentMessagesUnsubscribe();
                 window.currentMessagesUnsubscribe = null;
             }
 
-            // Загружаем список заблокированных пользователей
             const blockedSnapshot = await getDocs(collection(db, "users", window.currentUser.uid, "blocked"));
             const blockedUids = new Set();
             blockedSnapshot.forEach(doc => blockedUids.add(doc.data().uid));
@@ -1865,10 +1824,7 @@
 
                 snapshot.forEach(docSnap => {
                     const messageData = docSnap.data();
-                    
-                    // Пропускаем сообщения от заблокированных пользователей
                     if (blockedUids.has(messageData.uid)) return;
-                    
                     const isSentByMe = messageData.uid === window.currentUser.uid;
                     container.appendChild(createMessageElement(docSnap.id, messageData, isSentByMe, chatId));
                 });
@@ -1885,44 +1841,35 @@
 
             let messageHTML = '';
 
-            // Ответ на сообщение (реплай)
             if (messageData.replyTo) {
                 messageHTML += `<div class="reply-preview" onclick="scrollToMessage('${messageData.replyTo}')">↩ ${escapeHtml(messageData.replyToPreview || 'сообщение')}</div>`;
             }
 
-            // Основное тело сообщения
             messageHTML += '<div class="message">';
 
-            // Отправитель (для групповых чатов и полученных сообщений)
             const senderName = escapeHtml(messageData.nickname || messageData.email?.split('@')[0] || 'Аноним');
             if (window.currentChat?.isGroup && !isSentByMe) {
                 messageHTML += `<span class="msg-sender">${senderName}</span>`;
             }
 
-            // Текст сообщения
             messageHTML += escapeHtml(messageData.text || '');
 
-            // Метка "изменено"
             if (messageData.edited) {
                 messageHTML += '<span class="msg-edited">(изм.)</span>';
             }
 
-            // Прикреплённое изображение
             if (messageData.fileUrl) {
                 messageHTML += `<br><img src="${messageData.fileUrl}" class="attachment" onclick="window.open('${messageData.fileUrl}')" alt="Прикреплённое фото" loading="lazy">`;
             }
 
             messageHTML += '</div>';
 
-            // Реакции
             messageHTML += '<div class="reactions-bar" id="reactions-' + messageId + '"></div>';
 
-            // Кнопки действий над сообщением
             messageHTML += `<div class="message-actions">
                 <button class="msg-action-btn" onclick="event.stopPropagation();replyToMessage('${messageId}', '${escapeHtml((messageData.text || '').substring(0, 50))}')" title="Ответить">↩</button>
                 <button class="msg-action-btn" onclick="event.stopPropagation();openReactionPicker('${messageId}')" title="Добавить реакцию">😀</button>`;
 
-            // Кнопки редактирования и удаления (доступны отправителю ИЛИ создателю группы)
             const canDelete = isSentByMe || (window.currentChat?.isGroup && window.currentChat.groupId);
             if (canDelete) {
                 messageHTML += `<button class="msg-action-btn" onclick="event.stopPropagation();openEditMessageModal('${messageId}', '${chatId}', '${escapeHtml(messageData.text || '')}')" title="Редактировать">✏️</button>
@@ -1931,7 +1878,6 @@
 
             messageHTML += '</div>';
 
-            // Выбор реакции
             messageHTML += '<div class="reaction-picker" id="rp-' + messageId + '">' +
                 reactionEmojisList.map(emoji =>
                     `<span class="reaction-emoji" onclick="event.stopPropagation();addReaction('${messageId}', '${emoji}')">${emoji}</span>`
@@ -1939,8 +1885,6 @@
                 '</div>';
 
             wrapper.innerHTML = messageHTML;
-
-            // Загружаем реакции для этого сообщения
             loadReactions(messageId, chatId);
 
             return wrapper;
@@ -1981,8 +1925,10 @@
             }
         };
 
+        // ================================================================
+        // УДАЛЕНИЕ СООБЩЕНИЙ С ОЧИСТКОЙ ФАЙЛОВ ИЗ STORAGE
+        // ================================================================
         window.deleteMessage = async function(messageId, chatId, messageUid) {
-            // Для групповых чатов проверяем права
             if (window.currentChat?.isGroup && window.currentChat.groupId) {
                 const canDelete = await canDeleteMessageInGroup(window.currentChat.groupId, messageUid);
                 if (!canDelete) {
@@ -1994,13 +1940,26 @@
             if (!confirm('Удалить это сообщение?')) return;
 
             try {
-                // Удаляем все реакции на это сообщение
+                // Получаем данные сообщения перед удалением (чтобы проверить fileUrl)
+                const msgSnap = await getDoc(doc(db, `chats/${chatId}/messages`, messageId));
+                const messageData = msgSnap.exists() ? msgSnap.data() : null;
+
+                // Удаляем реакции и сообщение
                 const reactionsSnapshot = await getDocs(collection(db, `chats/${chatId}/messages/${messageId}/reactions`));
                 const batch = writeBatch(db);
                 reactionsSnapshot.forEach(docSnap => batch.delete(docSnap.ref));
-                // Удаляем само сообщение
                 batch.delete(doc(db, `chats/${chatId}/messages`, messageId));
                 await batch.commit();
+
+                // Удаляем файл из Storage если он был прикреплён
+                if (messageData?.fileUrl) {
+                    try {
+                        const fileRef = ref(storage, messageData.fileUrl);
+                        await deleteObject(fileRef);
+                    } catch (e) {
+                        console.log('Файл уже удалён или недоступен:', e);
+                    }
+                }
             } catch (error) {
                 console.error('Ошибка удаления:', error);
             }
@@ -2024,7 +1983,6 @@
                 timestamp: serverTimestamp()
             };
 
-            // Если это ответ на другое сообщение
             if (window.replyTo) {
                 messageData.replyTo = window.replyTo.id;
                 messageData.replyToPreview = window.replyTo.preview;
@@ -2036,11 +1994,9 @@
                 await addDoc(collection(db, `chats/${chatId}/messages`), messageData);
                 input.value = '';
 
-                // Сбрасываем индикатор печати
                 if (window.typingTimeout) clearTimeout(window.typingTimeout);
                 await deleteDoc(doc(db, "status", window.currentUser.uid + '_typing')).catch(() => {});
 
-                // Обновляем список контактов
                 loadContacts();
             } catch (error) {
                 console.error('Ошибка отправки сообщения:', error);
@@ -2048,47 +2004,51 @@
         };
 
         // ================================================================
-        // ОТПРАВКА ФАЙЛОВ (ИЗОБРАЖЕНИЙ) — ИСПРАВЛЕНО
+        // ОТПРАВКА ФАЙЛОВ (ИЗОБРАЖЕНИЙ) — ПОЛНОСТЬЮ ИСПРАВЛЕНО
         // ================================================================
         window.sendFile = async function(event) {
-            const file = event.target.files[0];
-            if (!file || !window.currentChat || !window.currentUser) {
-                event.target.value = '';
+            const fileInput = event.target;
+            const file = fileInput.files[0];
+            
+            // Проверки ДО любых действий
+            if (!file) {
+                fileInput.value = '';
                 return;
             }
 
-            // Проверка типа файла
+            if (!window.currentChat || !window.currentUser) {
+                fileInput.value = '';
+                return;
+            }
+
             if (!file.type.startsWith('image/')) {
                 alert('Можно отправлять только изображения.');
-                event.target.value = '';
+                fileInput.value = '';
                 return;
             }
 
-            // Проверка размера (максимум 5 МБ)
             if (file.size > 5 * 1024 * 1024) {
                 alert('Файл слишком большой. Максимальный размер: 5 МБ.');
-                event.target.value = '';
+                fileInput.value = '';
                 return;
             }
 
             const chatId = getChatId();
-            // Создаём уникальное имя файла
-            const fileExtension = file.name.split('.').pop() || 'jpg';
-            const uniqueFileName = Date.now() + '_' + Math.random().toString(36).substring(2, 8) + '.' + fileExtension;
-            const storageRef = ref(storage, `chat-files/${chatId}/${uniqueFileName}`);
+            const messageInput = document.getElementById('message-input');
+            
+            // Показываем индикатор загрузки
+            const originalPlaceholder = messageInput.placeholder;
+            messageInput.placeholder = 'Загрузка файла...';
+            messageInput.disabled = true;
 
             try {
-                // Показываем, что идёт загрузка
-                const input = document.getElementById('message-input');
-                input.placeholder = 'Загрузка файла...';
-                input.disabled = true;
+                const fileExtension = file.name.split('.').pop() || 'jpg';
+                const uniqueFileName = Date.now() + '_' + Math.random().toString(36).substring(2, 8) + '.' + fileExtension;
+                const storageRef = ref(storage, `chat-files/${chatId}/${uniqueFileName}`);
 
-                // Загружаем файл в Firebase Storage
                 const uploadResult = await uploadBytes(storageRef, file);
-                // Получаем публичную ссылку
                 const downloadURL = await getDownloadURL(uploadResult.ref);
 
-                // Отправляем сообщение с файлом
                 await addDoc(collection(db, `chats/${chatId}/messages`), {
                     text: '',
                     fileUrl: downloadURL,
@@ -2100,20 +2060,15 @@
                     timestamp: serverTimestamp()
                 });
 
-                // Восстанавливаем поле ввода
-                input.placeholder = 'Сообщение...';
-                input.disabled = false;
-                event.target.value = '';
                 loadContacts();
             } catch (error) {
                 console.error('Ошибка загрузки файла:', error);
-                alert('Не удалось отправить файл. Проверьте подключение к интернету и попробуйте снова.');
-
-                // Восстанавливаем поле ввода
-                const input = document.getElementById('message-input');
-                input.placeholder = 'Сообщение...';
-                input.disabled = false;
-                event.target.value = '';
+                alert('Не удалось отправить файл. Проверьте подключение к интернету.');
+            } finally {
+                // ВСЕГДА восстанавливаем поле ввода, независимо от результата
+                messageInput.placeholder = originalPlaceholder;
+                messageInput.disabled = false;
+                fileInput.value = '';
             }
         };
 
@@ -2149,9 +2104,7 @@
         // РЕАКЦИИ
         // ================================================================
         window.openReactionPicker = function(messageId) {
-            // Закрываем все открытые пикеры
             document.querySelectorAll('.reaction-picker').forEach(picker => picker.classList.remove('show'));
-            // Открываем нужный
             const picker = document.getElementById('rp-' + messageId);
             if (picker) picker.classList.toggle('show');
         };
@@ -2162,7 +2115,6 @@
             const reactionRef = doc(collection(db, `chats/${chatId}/messages/${messageId}/reactions`),
                 window.currentUser.uid + '_' + emoji);
 
-            // Проверяем, есть ли уже такая реакция от этого пользователя
             const existingSnapshot = await getDocs(query(
                 collection(db, `chats/${chatId}/messages/${messageId}/reactions`),
                 where("uid", "==", window.currentUser.uid),
@@ -2170,18 +2122,15 @@
             ));
 
             if (existingSnapshot.empty) {
-                // Добавляем реакцию
                 await setDoc(reactionRef, {
                     uid: window.currentUser.uid,
                     emoji: emoji,
                     timestamp: serverTimestamp()
                 });
             } else {
-                // Убираем реакцию (переключение)
                 await deleteDoc(existingSnapshot.docs[0].ref);
             }
 
-            // Закрываем все пикеры
             document.querySelectorAll('.reaction-picker').forEach(picker => picker.classList.remove('show'));
         };
 
@@ -2253,7 +2202,6 @@
                 }
             });
 
-            // Групповые чаты, в которых состоит пользователь
             const groupsSnapshot = await getDocs(query(collection(db, "chats"), where("isGroup", "==", true)));
             const groups = [];
 
@@ -2267,7 +2215,6 @@
 
             let listHTML = '';
 
-            // Групповые чаты
             groups.forEach(group => {
                 listHTML += `
                     <div class="contact-item" onclick="startGroupChat('${group.groupId}', '${escapeHtml(group.name || 'Группа')}')">
@@ -2280,7 +2227,6 @@
                     </div>`;
             });
 
-            // Личные чаты
             contacts.forEach(contact => {
                 listHTML += `
                     <div class="contact-item" onclick="startChat('${contact.uid}', '${escapeHtml(contact.nickname || contact.email?.split('@')[0])}', '${escapeHtml(contact.email)}')">
@@ -2296,8 +2242,6 @@
             });
 
             container.innerHTML = listHTML || '<div class="no-contacts">🔍 Используйте поиск,<br>чтобы найти собеседников</div>';
-
-            // Обновляем точки онлайн для всех контактов
             updateOnlineDots();
         }
 
@@ -2354,7 +2298,6 @@
                     </p>`;
                 });
 
-                // Кнопки управления группой для создателя
                 if (isCreator) {
                     membersHTML += `
                         <hr style="margin:12px 0;border-color:var(--border);">
@@ -2390,7 +2333,6 @@
                 await updateDoc(doc(db, `chats/${window.currentChat.groupId}/members`, memberId), {
                     role: newRole
                 });
-                // Обновляем информацию о чате
                 openChatInfoModal();
             } catch (error) {
                 console.error('Ошибка изменения роли:', error);
@@ -2405,12 +2347,10 @@
             if (!confirm('Вы уверены, что хотите удалить эту группу? Это действие нельзя отменить.')) return;
 
             try {
-                // Удаляем всех участников
                 const membersSnapshot = await getDocs(collection(db, `chats/${groupId}/members`));
                 const batch = writeBatch(db);
                 membersSnapshot.forEach(docSnap => batch.delete(docSnap.ref));
 
-                // Удаляем все сообщения и реакции
                 const messagesSnapshot = await getDocs(collection(db, `chats/${groupId}/messages`));
                 for (const msgDoc of messagesSnapshot.docs) {
                     const reactionsSnapshot = await getDocs(collection(db, `chats/${groupId}/messages/${msgDoc.id}/reactions`));
@@ -2418,7 +2358,6 @@
                     batch.delete(msgDoc.ref);
                 }
 
-                // Удаляем сам документ чата
                 batch.delete(doc(db, "chats", groupId));
                 await batch.commit();
 
@@ -2441,7 +2380,6 @@
             document.getElementById('settings-nickname').value = window.currentUser.displayName || '';
             document.getElementById('settings-email').value = window.currentUser.email || '';
 
-            // Загружаем данные пользователя из Firestore
             const userSnapshot = await getDocs(query(collection(db, "users"), where("__name__", "==", window.currentUser.uid)));
             const userData = userSnapshot.empty ? {} : userSnapshot.docs[0].data();
 
@@ -2492,10 +2430,7 @@
             }
 
             try {
-                // Обновляем профиль в Firebase Auth
                 await updateProfile(auth.currentUser, { displayName: newNickname });
-
-                // Обновляем данные в Firestore
                 await setDoc(doc(db, "users", window.currentUser.uid), {
                     nickname: newNickname,
                     bio: newBio,
@@ -2557,32 +2492,24 @@
             window.currentUser = user;
 
             if (user) {
-                // Пользователь вошёл — показываем интерфейс чатов
                 document.getElementById('auth-screen').style.display = 'none';
                 document.getElementById('main-container').style.display = 'flex';
 
-                // Обновляем/создаём документ пользователя в Firestore
                 await setDoc(doc(db, "users", user.uid), {
                     nickname: user.displayName || user.email?.split('@')[0] || 'Пользователь',
                     email: user.email,
                     updatedAt: serverTimestamp()
                 }, { merge: true });
 
-                // Устанавливаем статус онлайн
                 await setOnlineStatus(true);
-
-                // Загружаем список контактов
                 loadContacts();
 
-                // Отписываемся от предыдущей подписки на статусы если есть
                 if (window.currentStatusUnsubscribe) {
                     window.currentStatusUnsubscribe();
                     window.currentStatusUnsubscribe = null;
                 }
 
-                // Следим за статусами всех пользователей
                 window.currentStatusUnsubscribe = onSnapshot(collection(db, "status"), (snapshot) => {
-                    // Обновляем статус в шапке чата
                     if (window.currentChat && !window.currentChat.isGroup && window.currentChat.uid) {
                         snapshot.forEach(docSnap => {
                             if (docSnap.id === window.currentChat.uid) {
@@ -2590,26 +2517,26 @@
                             }
                         });
                     }
-                    // Обновляем точки онлайн в списке контактов
                     updateOnlineDots();
                 });
 
-                // Устанавливаем офлайн при закрытии вкладки + очистка typing
-                window.addEventListener('beforeunload', () => {
+                // Предотвращение дублирования beforeunload
+                if (window.beforeUnloadHandler) {
+                    window.removeEventListener('beforeunload', window.beforeUnloadHandler);
+                }
+                window.beforeUnloadHandler = () => {
                     setOnlineStatus(false);
-                    // ИСПРАВЛЕНО: Очищаем статус печати при закрытии
                     if (window.currentUser) {
                         deleteDoc(doc(db, "status", window.currentUser.uid + '_typing')).catch(() => {});
                     }
-                });
+                };
+                window.addEventListener('beforeunload', window.beforeUnloadHandler);
 
             } else {
-                // Пользователь вышел — показываем экран авторизации
                 document.getElementById('auth-screen').style.display = 'block';
                 document.getElementById('main-container').style.display = 'none';
                 document.getElementById('error-msg').classList.remove('show');
                 
-                // Отписываемся от всех подписок
                 if (window.currentStatusUnsubscribe) {
                     window.currentStatusUnsubscribe();
                     window.currentStatusUnsubscribe = null;
