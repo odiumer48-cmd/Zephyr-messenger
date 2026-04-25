@@ -1353,10 +1353,14 @@
         window.allUsersCache = [];
         window.typingTimeout = null;
         window.currentMessagesQuery = null;
+        window.currentMessagesUnsubscribe = null;
+        window.currentTypingUnsubscribe = null;
+        window.currentStatusUnsubscribe = null;
         window.editingMessageId = null;
         window.editingMessageChatId = null;
         window.blockingUserId = null;
         window.blockingUserName = null;
+        window.searchDebounceTimeout = null;
 
         // Стили аватаров DiceBear
         const avatarStylesList = ['initials', 'bottts', 'avataaars', 'lorelei', 'pixel-art', 'identicon', 'rings', 'thumbs'];
@@ -1522,8 +1526,15 @@
 
         function watchTypingStatus(chatId) {
             if (!window.currentChat) return;
+            
+            // Отписываемся от предыдущей подписки если есть
+            if (window.currentTypingUnsubscribe) {
+                window.currentTypingUnsubscribe();
+                window.currentTypingUnsubscribe = null;
+            }
+            
             const statusQuery = query(collection(db, "status"));
-            onSnapshot(statusQuery, (snapshot) => {
+            window.currentTypingUnsubscribe = onSnapshot(statusQuery, (snapshot) => {
                 let isTyping = false;
                 snapshot.forEach(docSnap => {
                     if (docSnap.id.endsWith('_typing') && docSnap.data().chatId === chatId) {
@@ -1538,43 +1549,49 @@
         }
 
         // ================================================================
-        // ПОИСК ПОЛЬЗОВАТЕЛЕЙ (ТОЛЬКО ПО НИКНЕЙМУ)
+        // ПОИСК ПОЛЬЗОВАТЕЛЕЙ (ТОЛЬКО ПО НИКНЕЙМУ) — С ДЕБАУНСОМ
         // ================================================================
-        window.searchUsers = async function() {
-            const searchText = document.getElementById('search-user-input').value.trim().toLowerCase();
-            const resultsDiv = document.getElementById('search-results');
+        window.searchUsers = function() {
+            // Очищаем предыдущий таймаут для дебаунса
+            if (window.searchDebounceTimeout) clearTimeout(window.searchDebounceTimeout);
+            
+            // Устанавливаем новый таймаут на 300мс
+            window.searchDebounceTimeout = setTimeout(async () => {
+                const searchText = document.getElementById('search-user-input').value.trim().toLowerCase();
+                const resultsDiv = document.getElementById('search-results');
 
-            if (!searchText || searchText.length < 2) {
-                resultsDiv.innerHTML = '<p style="color:var(--text-secondary);text-align:center;padding:8px;">Введите минимум 2 символа</p>';
-                return;
-            }
-
-            const usersSnapshot = await getDocs(collection(db, "users"));
-            const results = [];
-
-            usersSnapshot.forEach(docSnap => {
-                const userData = docSnap.data();
-                // Пропускаем себя
-                if (docSnap.id === window.currentUser?.uid) return;
-                // Ищем ТОЛЬКО по никнейму
-                const userNickname = (userData.nickname || '').toLowerCase();
-                if (userNickname.includes(searchText)) {
-                    results.push({ uid: docSnap.id, ...userData });
+                if (!searchText || searchText.length < 2) {
+                    resultsDiv.innerHTML = '<p style="color:var(--text-secondary);text-align:center;padding:8px;">Введите минимум 2 символа</p>';
+                    return;
                 }
-            });
 
-            if (results.length === 0) {
-                resultsDiv.innerHTML = '<p style="color:var(--text-secondary);text-align:center;padding:8px;">Никого не найдено</p>';
-            } else {
-                resultsDiv.innerHTML = results.map(user => `
-                    <div class="search-result-item" onclick="startChat('${user.uid}', '${escapeHtml(user.nickname || user.email?.split('@')[0])}', '${escapeHtml(user.email)}')">
-                        <img src="${getAvatarUrl(user.nickname || user.email, user.avatarStyle)}" width="38" height="38" style="border-radius:50%;">
-                        <div>
-                            <strong>${escapeHtml(user.nickname || user.email?.split('@')[0])}</strong>
+                const usersSnapshot = await getDocs(collection(db, "users"));
+                const results = [];
+
+                usersSnapshot.forEach(docSnap => {
+                    const userData = docSnap.data();
+                    // Пропускаем себя
+                    if (docSnap.id === window.currentUser?.uid) return;
+                    // Ищем ТОЛЬКО по никнейму
+                    const userNickname = (userData.nickname || '').toLowerCase();
+                    if (userNickname.includes(searchText)) {
+                        results.push({ uid: docSnap.id, ...userData });
+                    }
+                });
+
+                if (results.length === 0) {
+                    resultsDiv.innerHTML = '<p style="color:var(--text-secondary);text-align:center;padding:8px;">Никого не найдено</p>';
+                } else {
+                    resultsDiv.innerHTML = results.map(user => `
+                        <div class="search-result-item" onclick="startChat('${user.uid}', '${escapeHtml(user.nickname || user.email?.split('@')[0])}', '${escapeHtml(user.email)}')">
+                            <img src="${getAvatarUrl(user.nickname || user.email, user.avatarStyle)}" width="38" height="38" style="border-radius:50%;">
+                            <div>
+                                <strong>${escapeHtml(user.nickname || user.email?.split('@')[0])}</strong>
+                            </div>
                         </div>
-                    </div>
-                `).join('');
-            }
+                    `).join('');
+                }
+            }, 300);
         };
 
         window.openSearchModal = function() {
@@ -1717,8 +1734,9 @@
             if (!window.currentChat || !window.currentUser) return null;
             // Групповой чат использует свой ID
             if (window.currentChat.groupId) return window.currentChat.groupId;
-            // Личный чат: ID формируется из двух UID, отсортированных по алфавиту
-            return [window.currentUser.uid, window.currentChat.uid].sort().join('_');
+            // ИСПРАВЛЕНО: Используем localeCompare для корректной сортировки строк
+            const sortedUids = [window.currentUser.uid, window.currentChat.uid].sort((a, b) => a.localeCompare(b));
+            return sortedUids.join('_');
         }
 
         window.startChat = function(uid, nickname, email) {
@@ -1800,12 +1818,22 @@
             window.currentChat = null;
             document.getElementById('chat-screen').style.display = 'none';
             document.getElementById('welcome-screen').style.display = 'block';
+            
+            // Отписываемся от подписок при уходе из чата
+            if (window.currentMessagesUnsubscribe) {
+                window.currentMessagesUnsubscribe();
+                window.currentMessagesUnsubscribe = null;
+            }
+            if (window.currentTypingUnsubscribe) {
+                window.currentTypingUnsubscribe();
+                window.currentTypingUnsubscribe = null;
+            }
         };
 
         // ================================================================
-        // ЗАГРУЗКА И ОТОБРАЖЕНИЕ СООБЩЕНИЙ
+        // ЗАГРУЗКА И ОТОБРАЖЕНИЕ СООБЩЕНИЙ — С ФИЛЬТРАЦИЕЙ ЗАБЛОКИРОВАННЫХ
         // ================================================================
-        function loadMessages() {
+        async function loadMessages() {
             const chatId = getChatId();
             if (!chatId || !window.currentUser) return;
 
@@ -1816,7 +1844,18 @@
             );
             window.currentMessagesQuery = messagesQuery;
 
-            onSnapshot(messagesQuery, (snapshot) => {
+            // Отписываемся от предыдущей подписки если есть
+            if (window.currentMessagesUnsubscribe) {
+                window.currentMessagesUnsubscribe();
+                window.currentMessagesUnsubscribe = null;
+            }
+
+            // Загружаем список заблокированных пользователей
+            const blockedSnapshot = await getDocs(collection(db, "users", window.currentUser.uid, "blocked"));
+            const blockedUids = new Set();
+            blockedSnapshot.forEach(doc => blockedUids.add(doc.data().uid));
+
+            window.currentMessagesUnsubscribe = onSnapshot(messagesQuery, (snapshot) => {
                 container.innerHTML = '';
 
                 if (snapshot.empty) {
@@ -1826,6 +1865,10 @@
 
                 snapshot.forEach(docSnap => {
                     const messageData = docSnap.data();
+                    
+                    // Пропускаем сообщения от заблокированных пользователей
+                    if (blockedUids.has(messageData.uid)) return;
+                    
                     const isSentByMe = messageData.uid === window.currentUser.uid;
                     container.appendChild(createMessageElement(docSnap.id, messageData, isSentByMe, chatId));
                 });
@@ -2531,8 +2574,14 @@
                 // Загружаем список контактов
                 loadContacts();
 
+                // Отписываемся от предыдущей подписки на статусы если есть
+                if (window.currentStatusUnsubscribe) {
+                    window.currentStatusUnsubscribe();
+                    window.currentStatusUnsubscribe = null;
+                }
+
                 // Следим за статусами всех пользователей
-                onSnapshot(collection(db, "status"), (snapshot) => {
+                window.currentStatusUnsubscribe = onSnapshot(collection(db, "status"), (snapshot) => {
                     // Обновляем статус в шапке чата
                     if (window.currentChat && !window.currentChat.isGroup && window.currentChat.uid) {
                         snapshot.forEach(docSnap => {
@@ -2545,9 +2594,13 @@
                     updateOnlineDots();
                 });
 
-                // Устанавливаем офлайн при закрытии вкладки
+                // Устанавливаем офлайн при закрытии вкладки + очистка typing
                 window.addEventListener('beforeunload', () => {
                     setOnlineStatus(false);
+                    // ИСПРАВЛЕНО: Очищаем статус печати при закрытии
+                    if (window.currentUser) {
+                        deleteDoc(doc(db, "status", window.currentUser.uid + '_typing')).catch(() => {});
+                    }
                 });
 
             } else {
@@ -2555,6 +2608,20 @@
                 document.getElementById('auth-screen').style.display = 'block';
                 document.getElementById('main-container').style.display = 'none';
                 document.getElementById('error-msg').classList.remove('show');
+                
+                // Отписываемся от всех подписок
+                if (window.currentStatusUnsubscribe) {
+                    window.currentStatusUnsubscribe();
+                    window.currentStatusUnsubscribe = null;
+                }
+                if (window.currentMessagesUnsubscribe) {
+                    window.currentMessagesUnsubscribe();
+                    window.currentMessagesUnsubscribe = null;
+                }
+                if (window.currentTypingUnsubscribe) {
+                    window.currentTypingUnsubscribe();
+                    window.currentTypingUnsubscribe = null;
+                }
             }
         });
 
