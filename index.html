@@ -7,10 +7,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* ================================================================
-           ZEPHYR MESSENGER — ПОЛНАЯ ВЕРСИЯ
+           ZEPHYR MESSENGER - ПОЛНАЯ ВЕРСИЯ С МОБИЛЬНОЙ АДАПТАЦИЕЙ
+           НОВЫЕ ТЕМЫ: light, dark, green, blue, purple, sunset, ocean, forest
            ================================================================ */
 
-        /* ---------- СВЕТЛАЯ ТЕМА (БАЗОВАЯ) ---------- */
+        /* ── ПЕРЕМЕННЫЕ ТЕМ (СВЕТЛАЯ ТЕМА ПО УМОЛЧАНИЮ) ── */
         :root {
             --primary: #6C5CE7;
             --primary-dark: #5A4BD1;
@@ -35,9 +36,10 @@
             --danger: #E74C3C;
             --danger-bg: #FFF0F0;
             --mobile-nav-height: 60px;
+            --modal-overlay-bg: rgba(0,0,0,0.5);
         }
 
-        /* ---------- ОПТИМИЗИРОВАННЫЙ РЕЖИМ (ОТКЛЮЧАЕТ АНИМАЦИИ И ТЕНИ) ---------- */
+        /* ── ОПТИМИЗИРОВАННЫЙ РЕЖИМ (БЕЗ АНИМАЦИЙ) ── */
         body.optimized {
             --shadow: none;
             --radius: 8px;
@@ -45,7 +47,7 @@
             --animations: 0;
         }
 
-        /* ---------- ТЁМНАЯ ТЕМА ---------- */
+        /* ── ТЁМНАЯ ТЕМА ── */
         body.theme-dark {
             --primary: #A29BFE;
             --primary-dark: #8B7DF7;
@@ -62,9 +64,10 @@
             --input-bg: #1E1E40;
             --danger-bg: #3D1F1F;
             --sent-msg: linear-gradient(135deg, #A29BFE, #6C5CE7);
+            --modal-overlay-bg: rgba(0,0,0,0.7);
         }
 
-        /* ---------- ЗЕЛЁНАЯ ТЕМА ---------- */
+        /* ── ЗЕЛЁНАЯ ТЕМА ── */
         body.theme-green {
             --primary: #00B894;
             --primary-dark: #00A381;
@@ -76,7 +79,67 @@
             --sent-msg: linear-gradient(135deg, #00B894, #55EFC4);
         }
 
-        /* ---------- СБРОС СТИЛЕЙ ---------- */
+        /* ── СИНЯЯ ТЕМА ── */
+        body.theme-blue {
+            --primary: #3498DB;
+            --primary-dark: #2980B9;
+            --primary-light: #74B9FF;
+            --bg: #F0F8FF;
+            --sidebar-bg: #E8F4FF;
+            --hover: #D4EAFF;
+            --selected: #B8D8FF;
+            --sent-msg: linear-gradient(135deg, #3498DB, #74B9FF);
+        }
+
+        /* ── ФИОЛЕТОВАЯ ТЕМА ── */
+        body.theme-purple {
+            --primary: #9B59B6;
+            --primary-dark: #8E44AD;
+            --primary-light: #C39BD3;
+            --bg: #FDF5FF;
+            --sidebar-bg: #F8EDFF;
+            --hover: #F0D9FF;
+            --selected: #E8C8FF;
+            --sent-msg: linear-gradient(135deg, #9B59B6, #C39BD3);
+        }
+
+        /* ── ЗАКАТНАЯ ТЕМА ── */
+        body.theme-sunset {
+            --primary: #E17055;
+            --primary-dark: #D35400;
+            --primary-light: #FAB1A0;
+            --bg: #FFF5F0;
+            --sidebar-bg: #FFEDE5;
+            --hover: #FFDDD0;
+            --selected: #FFCCBB;
+            --sent-msg: linear-gradient(135deg, #E17055, #FAB1A0);
+        }
+
+        /* ── ОКЕАНСКАЯ ТЕМА ── */
+        body.theme-ocean {
+            --primary: #0ABDE3;
+            --primary-dark: #0984E3;
+            --primary-light: #81ECEC;
+            --bg: #F0FDFF;
+            --sidebar-bg: #E5FAFF;
+            --hover: #D0F5FF;
+            --selected: #BBEFFF;
+            --sent-msg: linear-gradient(135deg, #0ABDE3, #81ECEC);
+        }
+
+        /* ── ЛЕСНАЯ ТЕМА ── */
+        body.theme-forest {
+            --primary: #27AE60;
+            --primary-dark: #1E8449;
+            --primary-light: #58D68D;
+            --bg: #F0FFF5;
+            --sidebar-bg: #E5FFF0;
+            --hover: #D0FFE5;
+            --selected: #BBFFD8;
+            --sent-msg: linear-gradient(135deg, #27AE60, #58D68D);
+        }
+
+        /* ── СБРОС СТИЛЕЙ ── */
         * {
             margin: 0;
             padding: 0;
@@ -97,7 +160,7 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        /* ---------- ОСНОВНОЙ КОНТЕЙНЕР ---------- */
+        /* ── ОСНОВНОЙ КОНТЕЙНЕР ── */
         .container {
             width: 100%;
             max-width: 900px;
@@ -112,9 +175,7 @@
             position: relative;
         }
 
-        /* ================================================================
-           БОКОВАЯ ПАНЕЛЬ (СПИСОК ЧАТОВ)
-           ================================================================ */
+        /* ── БОКОВАЯ ПАНЕЛЬ (СПИСОК ЧАТОВ) ── */
         .sidebar {
             width: 320px;
             min-width: 280px;
@@ -303,9 +364,7 @@
             line-height: 1.5;
         }
 
-        /* ================================================================
-           ОСНОВНАЯ ОБЛАСТЬ ЧАТА
-           ================================================================ */
+        /* ── ОСНОВНАЯ ОБЛАСТЬ ЧАТА ── */
         .chat-area {
             flex: 1;
             display: flex;
@@ -652,9 +711,7 @@
             color: var(--text-secondary);
         }
 
-        /* ================================================================
-           ЭКРАН ВХОДА
-           ================================================================ */
+        /* ── ЭКРАН ВХОДА ── */
         .auth-screen {
             width: 100%;
             max-width: 420px;
@@ -781,19 +838,14 @@
             transform: scale(1.1);
         }
 
-        .dot-light {
-            background: #F0F0F5;
-            border: 1px solid #ccc;
-        }
-
-        .dot-dark {
-            background: #1A1A2E;
-        }
-
-        .dot-green {
-            background: #E0FFF0;
-            border: 1px solid #00B894;
-        }
+        .dot-light { background: #F0F0F5; border: 1px solid #ccc; }
+        .dot-dark { background: #1A1A2E; }
+        .dot-green { background: #E0FFF0; border: 1px solid #00B894; }
+        .dot-blue { background: #E0F0FF; border: 1px solid #3498DB; }
+        .dot-purple { background: #F8E8FF; border: 1px solid #9B59B6; }
+        .dot-sunset { background: #FFE8E0; border: 1px solid #E17055; }
+        .dot-ocean { background: #E0FAFF; border: 1px solid #0ABDE3; }
+        .dot-forest { background: #E0FFE8; border: 1px solid #27AE60; }
 
         .mode-btn {
             padding: 8px 16px;
@@ -813,16 +865,14 @@
             background: var(--selected);
         }
 
-        /* ================================================================
-           МОДАЛЬНЫЕ ОКНА
-           ================================================================ */
+        /* ── МОДАЛЬНЫЕ ОКНА ── */
         .modal-overlay {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0,0,0,0.5);
+            background: var(--modal-overlay-bg);
             display: none;
             justify-content: center;
             align-items: center;
@@ -956,9 +1006,31 @@
             font-weight: bold;
         }
 
-        /* ================================================================
-           ДОБРО ПОЖАЛОВАТЬ (ПУСТОЙ ЭКРАН)
-           ================================================================ */
+        /* Роль участника */
+        .role-badge {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 8px;
+            margin-left: 6px;
+            font-weight: 600;
+        }
+
+        .role-badge.creator {
+            background: #FDCB6E;
+            color: #6C5CE7;
+        }
+
+        .role-badge.admin {
+            background: #74B9FF;
+            color: #2D3436;
+        }
+
+        .role-badge.member {
+            background: #DFE6E9;
+            color: #636E72;
+        }
+
+        /* ── ДОБРО ПОЖАЛОВАТЬ (ПУСТОЙ ЭКРАН) ── */
         .welcome-screen {
             text-align: center;
             margin-top: 80px;
@@ -989,148 +1061,47 @@
             font-size: 14px;
         }
 
-        /* ================================================================
-           СКРОЛЛБАР
-           ================================================================ */
-        ::-webkit-scrollbar {
-            width: 5px;
-        }
+        /* ── СКРОЛЛБАР ── */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
 
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #ccc;
-            border-radius: 10px;
-        }
-
-        /* ================================================================
-           АНИМАЦИИ
-           ================================================================ */
+        /* ── АНИМАЦИИ ── */
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(6px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        /* ================================================================
-           МОБИЛЬНАЯ АДАПТАЦИЯ (ПОЛНОСТЬЮ ПЕРЕСТРОЕННАЯ)
-           ================================================================ */
+        /* ── МОБИЛЬНАЯ АДАПТАЦИЯ ── */
         @media (max-width: 700px) {
-            body {
-                padding: 0;
-            }
-
-            .container {
-                height: 100vh;
-                height: 100dvh;
-                border-radius: 0;
-                max-width: 100%;
-            }
-
-            /* Боковая панель на мобилках занимает весь экран */
-            .sidebar {
-                width: 100%;
-                min-width: 100%;
-                max-width: 100%;
-                border-right: none;
-            }
-
-            /* Когда чат открыт — боковая панель скрывается */
-            .container.chat-open .sidebar {
-                display: none;
-            }
-
-            /* Область чата на мобилках */
-            .chat-area {
-                width: 100%;
-                display: flex;
-            }
-
-            .container:not(.chat-open) .chat-area {
-                display: none;
-            }
-
-            .container.chat-open .chat-area {
-                display: flex;
-            }
-
-            /* Кнопка "Назад" видна на мобилках */
-            .mobile-back-btn {
-                display: flex;
-            }
-
-            /* Сообщения шире */
-            .message-wrapper {
-                max-width: 88%;
-            }
-
-            /* Модалки на весь экран */
-            .modal {
-                max-width: 100%;
-                border-radius: 16px 16px 0 0;
-                max-height: 85vh;
-            }
-
-            .modal-overlay {
-                align-items: flex-end;
-            }
-
-            /* Кнопка отправки крупнее */
-            .btn-send {
-                width: 44px;
-                height: 44px;
-                font-size: 19px;
-            }
-
-            /* Поле ввода крупнее */
-            .message-input-area input {
-                padding: 12px 18px;
-                font-size: 15px;
-            }
+            body { padding: 0; }
+            .container { height: 100vh; height: 100dvh; border-radius: 0; max-width: 100%; }
+            .sidebar { width: 100%; min-width: 100%; max-width: 100%; border-right: none; }
+            .container.chat-open .sidebar { display: none; }
+            .chat-area { width: 100%; display: flex; }
+            .container:not(.chat-open) .chat-area { display: none; }
+            .container.chat-open .chat-area { display: flex; }
+            .mobile-back-btn { display: flex; }
+            .message-wrapper { max-width: 88%; }
+            .modal { max-width: 100%; border-radius: 16px 16px 0 0; max-height: 85vh; }
+            .modal-overlay { align-items: flex-end; }
+            .btn-send { width: 44px; height: 44px; font-size: 19px; }
+            .message-input-area input { padding: 12px 18px; font-size: 15px; }
         }
 
-        /* Очень маленькие экраны */
         @media (max-width: 380px) {
-            .sidebar-header {
-                padding: 12px 14px;
-            }
-
-            .logo-text {
-                font-size: 19px;
-            }
-
-            .icon-btn {
-                width: 32px;
-                height: 32px;
-                font-size: 15px;
-            }
-
-            .chat-header {
-                padding: 10px 12px;
-            }
-
-            .message {
-                padding: 7px 11px;
-                font-size: 13px;
-            }
+            .sidebar-header { padding: 12px 14px; }
+            .logo-text { font-size: 19px; }
+            .icon-btn { width: 32px; height: 32px; font-size: 15px; }
+            .chat-header { padding: 10px 12px; }
+            .message { padding: 7px 11px; font-size: 13px; }
         }
     </style>
 </head>
 <body>
 
-    <!-- ================================================================
-    ОСНОВНОЙ КОНТЕЙНЕР ПРИЛОЖЕНИЯ (ЧАТЫ)
-    ================================================================ -->
+    <!-- ОСНОВНОЙ КОНТЕЙНЕР -->
     <div class="container" id="main-container" style="display:none;">
-
-        <!-- БОКОВАЯ ПАНЕЛЬ СО СПИСКОМ ЧАТОВ -->
         <div class="sidebar" id="sidebar-panel">
             <div class="sidebar-header">
                 <span class="logo-text">⚡ Zephyr</span>
@@ -1149,24 +1120,17 @@
             </div>
         </div>
 
-        <!-- ОСНОВНАЯ ОБЛАСТЬ ЧАТА -->
         <div class="chat-area" id="chat-area">
-            <!-- НАЧАЛЬНЫЙ ЭКРАН (КОГДА ЧАТ НЕ ВЫБРАН) -->
             <div id="welcome-screen" class="welcome-screen">
                 <div class="big-logo">⚡</div>
                 <h2>Добро пожаловать в Zephyr</h2>
                 <p>Выберите чат или создайте группу</p>
             </div>
-
-            <!-- АКТИВНЫЙ ЧАТ (СКРЫТ, ПОКА НЕ ВЫБРАН) -->
             <div id="chat-screen" style="display:none; flex:1; flex-direction:column;">
                 <div class="chat-header">
-                    <!-- Кнопка "Назад" (видна только на мобильных) -->
                     <button class="mobile-back-btn" onclick="goBackToChatList()" title="Назад к чатам">←</button>
                     <div class="chat-user" onclick="openChatInfoModal()">
-                        <div class="avatar">
-                            <img id="chat-avatar-img" src="" alt="Аватар чата">
-                        </div>
+                        <div class="avatar"><img id="chat-avatar-img" src="" alt="Аватар чата"></div>
                         <div>
                             <div class="chat-user-name" id="chat-user-name">—</div>
                             <div class="chat-user-status" id="chat-user-status">—</div>
@@ -1191,126 +1155,85 @@
         </div>
     </div>
 
-    <!-- ================================================================
-    ЭКРАН АВТОРИЗАЦИИ (ВХОД / РЕГИСТРАЦИЯ)
-    ================================================================ -->
+    <!-- ЭКРАН АВТОРИЗАЦИИ -->
     <div class="auth-screen" id="auth-screen">
         <div class="logo">⚡</div>
         <h1>Zephyr</h1>
         <p class="subtitle">Лёгкий и быстрый мессенджер</p>
-
-        <!-- ВЫБОР ТЕМЫ ОФОРМЛЕНИЯ -->
         <p class="section-label">Тема оформления</p>
         <div class="option-row">
-            <button class="theme-dot dot-light active" onclick="setTheme('light')" title="Светлая тема"></button>
-            <button class="theme-dot dot-dark" onclick="setTheme('dark')" title="Тёмная тема"></button>
-            <button class="theme-dot dot-green" onclick="setTheme('green')" title="Зелёная тема"></button>
+            <button class="theme-dot dot-light active" onclick="setTheme('light')" title="Светлая"></button>
+            <button class="theme-dot dot-dark" onclick="setTheme('dark')" title="Тёмная"></button>
+            <button class="theme-dot dot-green" onclick="setTheme('green')" title="Зелёная"></button>
+            <button class="theme-dot dot-blue" onclick="setTheme('blue')" title="Синяя"></button>
+            <button class="theme-dot dot-purple" onclick="setTheme('purple')" title="Фиолетовая"></button>
+            <button class="theme-dot dot-sunset" onclick="setTheme('sunset')" title="Закатная"></button>
+            <button class="theme-dot dot-ocean" onclick="setTheme('ocean')" title="Океанская"></button>
+            <button class="theme-dot dot-forest" onclick="setTheme('forest')" title="Лесная"></button>
         </div>
-
-        <!-- ВЫБОР РЕЖИМА ПРОИЗВОДИТЕЛЬНОСТИ -->
         <p class="section-label">Режим работы</p>
         <div class="option-row">
             <button class="mode-btn active" onclick="setMode('normal')">Полный</button>
             <button class="mode-btn" onclick="setMode('optimized')">Оптимизированный</button>
         </div>
-
-        <!-- ФОРМА ВХОДА / РЕГИСТРАЦИИ -->
         <form class="auth-form" onsubmit="handleAuth(event)" style="margin-top:12px;">
             <input type="text" id="auth-nickname" placeholder="Никнейм" required minlength="3" autocomplete="username">
             <input type="email" id="auth-email" placeholder="Email" required autocomplete="email">
             <input type="password" id="auth-password" placeholder="Пароль (минимум 6 символов)" required minlength="6" autocomplete="current-password">
             <div class="error-msg" id="error-msg"></div>
             <button type="submit" class="btn btn-primary" id="auth-btn">Войти</button>
-            <button type="button" class="btn btn-link" onclick="toggleAuthMode()" id="toggle-btn">
-                Нет аккаунта? Зарегистрироваться
-            </button>
+            <button type="button" class="btn btn-link" onclick="toggleAuthMode()" id="toggle-btn">Нет аккаунта? Зарегистрироваться</button>
         </form>
     </div>
 
-    <!-- ================================================================
-    МОДАЛЬНОЕ ОКНО: ПОИСК ПОЛЬЗОВАТЕЛЕЙ
-    ================================================================ -->
+    <!-- МОДАЛЬНОЕ ОКНО: ПОИСК ПОЛЬЗОВАТЕЛЕЙ -->
     <div class="modal-overlay" id="search-modal">
         <div class="modal">
             <h3>🔍 Найти пользователя</h3>
-            <div class="form-group">
-                <input type="text" id="search-user-input" placeholder="Введите никнейм..." oninput="searchUsers()" autocomplete="off">
-            </div>
-            <div class="search-results" id="search-results">
-                <p style="color:var(--text-secondary);text-align:center;padding:8px;">Введите минимум 2 символа</p>
-            </div>
+            <div class="form-group"><input type="text" id="search-user-input" placeholder="Введите никнейм..." oninput="searchUsers()" autocomplete="off"></div>
+            <div class="search-results" id="search-results"><p style="color:var(--text-secondary);text-align:center;padding:8px;">Введите минимум 2 символа</p></div>
             <button class="btn btn-link" onclick="closeSearchModal()" style="width:100%;margin-top:6px;">Закрыть</button>
         </div>
     </div>
 
-    <!-- ================================================================
-    МОДАЛЬНОЕ ОКНО: НАСТРОЙКИ ПРОФИЛЯ
-    ================================================================ -->
+    <!-- МОДАЛЬНОЕ ОКНО: НАСТРОЙКИ ПРОФИЛЯ -->
     <div class="modal-overlay" id="settings-modal">
         <div class="modal">
             <h3>⚙️ Настройки профиля</h3>
-
-            <!-- Предпросмотр аватарки -->
             <img class="avatar-preview" id="settings-avatar-preview" src="" alt="Ваш аватар">
-
-            <!-- Выбор стиля аватарки -->
             <p style="font-size:12px;color:var(--text-secondary);text-align:center;margin-bottom:6px;">Стиль аватарки</p>
             <div class="avatar-styles" id="avatar-styles-container"></div>
-
-            <!-- Никнейм -->
-            <div class="form-group">
-                <label>Никнейм</label>
-                <input type="text" id="settings-nickname" placeholder="Ваш никнейм" minlength="3">
-            </div>
-
-            <!-- Email (только для просмотра) -->
-            <div class="form-group">
-                <label>Email</label>
-                <input type="email" id="settings-email" disabled style="opacity:0.65;">
-            </div>
-
-            <!-- Биография / Статус -->
-            <div class="form-group">
-                <label>Биография / Статус</label>
-                <textarea id="settings-bio" rows="2" maxlength="100" placeholder="Коротко о себе..."></textarea>
-            </div>
-
-            <!-- Смена темы внутри настроек -->
+            <div class="form-group"><label>Никнейм</label><input type="text" id="settings-nickname" placeholder="Ваш никнейм" minlength="3"></div>
+            <div class="form-group"><label>Email</label><input type="email" id="settings-email" disabled style="opacity:0.65;"></div>
+            <div class="form-group"><label>Биография / Статус</label><textarea id="settings-bio" rows="2" maxlength="100" placeholder="Коротко о себе..."></textarea></div>
             <p style="font-size:12px;color:var(--text-secondary);text-align:center;margin:8px 0 4px;">Тема оформления</p>
             <div class="option-row">
-                <button class="theme-dot dot-light" onclick="setTheme('light')" title="Светлая тема"></button>
-                <button class="theme-dot dot-dark" onclick="setTheme('dark')" title="Тёмная тема"></button>
-                <button class="theme-dot dot-green" onclick="setTheme('green')" title="Зелёная тема"></button>
+                <button class="theme-dot dot-light" onclick="setTheme('light')"></button>
+                <button class="theme-dot dot-dark" onclick="setTheme('dark')"></button>
+                <button class="theme-dot dot-green" onclick="setTheme('green')"></button>
+                <button class="theme-dot dot-blue" onclick="setTheme('blue')"></button>
+                <button class="theme-dot dot-purple" onclick="setTheme('purple')"></button>
+                <button class="theme-dot dot-sunset" onclick="setTheme('sunset')"></button>
+                <button class="theme-dot dot-ocean" onclick="setTheme('ocean')"></button>
+                <button class="theme-dot dot-forest" onclick="setTheme('forest')"></button>
             </div>
-
-            <!-- Смена режима внутри настроек -->
             <p style="font-size:12px;color:var(--text-secondary);text-align:center;margin:8px 0 4px;">Режим работы</p>
             <div class="option-row">
                 <button class="mode-btn" id="mode-normal-btn" onclick="setMode('normal')">Полный</button>
                 <button class="mode-btn" id="mode-optimized-btn" onclick="setMode('optimized')">Оптимизированный</button>
             </div>
-
-            <!-- Кнопки сохранения и выхода -->
             <button class="btn btn-primary" onclick="saveSettings()" style="width:100%;margin-top:14px;">Сохранить изменения</button>
             <button class="btn btn-danger" onclick="logout()" style="width:100%;margin-top:8px;">🚪 Выйти из аккаунта</button>
             <button class="btn btn-link" onclick="closeSettingsModal()" style="width:100%;">Отмена</button>
         </div>
     </div>
 
-    <!-- ================================================================
-    МОДАЛЬНОЕ ОКНО: СОЗДАНИЕ ГРУППОВОГО ЧАТА
-    ================================================================ -->
+    <!-- МОДАЛЬНОЕ ОКНО: СОЗДАНИЕ ГРУППОВОГО ЧАТА -->
     <div class="modal-overlay" id="create-group-modal">
         <div class="modal">
             <h3>👥 Создать группу</h3>
-            <div class="form-group">
-                <label>Название группы</label>
-                <input type="text" id="group-name" placeholder="Введите название группы...">
-            </div>
-            <div class="form-group">
-                <label>Добавить участников</label>
-                <input type="text" id="group-member-search" placeholder="Поиск по никнейму..." oninput="searchGroupMembers()" autocomplete="off">
-            </div>
+            <div class="form-group"><label>Название группы</label><input type="text" id="group-name" placeholder="Введите название группы..."></div>
+            <div class="form-group"><label>Добавить участников</label><input type="text" id="group-member-search" placeholder="Поиск по никнейму..." oninput="searchGroupMembers()" autocomplete="off"></div>
             <div id="group-member-results" style="max-height:130px;overflow-y:auto;"></div>
             <div id="selected-members" style="margin:8px 0;min-height:20px;"></div>
             <button class="btn btn-primary" onclick="createGroupChat()" style="width:100%;">Создать группу</button>
@@ -1318,9 +1241,7 @@
         </div>
     </div>
 
-    <!-- ================================================================
-    МОДАЛЬНОЕ ОКНО: ИНФОРМАЦИЯ О ЧАТЕ / ПОЛЬЗОВАТЕЛЕ
-    ================================================================ -->
+    <!-- МОДАЛЬНОЕ ОКНО: ИНФОРМАЦИЯ О ЧАТЕ / ПОЛЬЗОВАТЕЛЕ -->
     <div class="modal-overlay" id="chat-info-modal">
         <div class="modal">
             <h3 id="chat-info-title">Информация</h3>
@@ -1329,11 +1250,44 @@
         </div>
     </div>
 
-    <!-- ================================================================
-    JAVASCRIPT: ПОЛНАЯ ЛОГИКА ПРИЛОЖЕНИЯ
-    ================================================================ -->
+    <!-- МОДАЛЬНОЕ ОКНО: РЕДАКТИРОВАНИЕ СООБЩЕНИЯ -->
+    <div class="modal-overlay" id="edit-message-modal">
+        <div class="modal">
+            <h3>✏️ Редактировать сообщение</h3>
+            <div class="form-group"><label>Текст сообщения</label><textarea id="edit-message-text" rows="3"></textarea></div>
+            <div style="display:flex;gap:8px;">
+                <button class="btn btn-primary" onclick="saveEditedMessage()" style="flex:1;">Сохранить</button>
+                <button class="btn btn-link" onclick="closeEditMessageModal()" style="flex:1;">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО: БЛОКИРОВКА ПОЛЬЗОВАТЕЛЯ -->
+    <div class="modal-overlay" id="block-user-modal">
+        <div class="modal">
+            <h3>🚫 Заблокировать пользователя</h3>
+            <p style="text-align:center;margin-bottom:12px;" id="block-user-name">Вы уверены?</p>
+            <p style="font-size:12px;color:var(--text-secondary);text-align:center;margin-bottom:16px;">Вы больше не будете видеть сообщения от этого пользователя.</p>
+            <div style="display:flex;gap:8px;">
+                <button class="btn btn-danger" onclick="confirmBlockUser()" style="flex:1;">Заблокировать</button>
+                <button class="btn btn-link" onclick="closeBlockUserModal()" style="flex:1;">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО: УПРАВЛЕНИЕ ГРУППОЙ (для создателя) -->
+    <div class="modal-overlay" id="manage-group-modal">
+        <div class="modal">
+            <h3>⚙️ Управление группой</h3>
+            <div id="manage-group-content"></div>
+            <button class="btn btn-link" onclick="closeManageGroupModal()" style="width:100%;">Закрыть</button>
+        </div>
+    </div>
+
     <script type="module">
-        // Импорт Firebase SDK
+        // ================================================================
+        // ИМПОРТЫ FIREBASE SDK
+        // ================================================================
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import {
             getAuth,
@@ -1358,16 +1312,20 @@
             deleteDoc,
             where,
             writeBatch,
-            limit
+            limit,
+            getDoc
         } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import {
             getStorage,
             ref,
             uploadBytes,
-            getDownloadURL
+            getDownloadURL,
+            deleteObject
         } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
 
-        // Конфигурация Firebase (ВАШИ ДАННЫЕ)
+        // ================================================================
+        // КОНФИГУРАЦИЯ FIREBASE
+        // ================================================================
         const firebaseConfig = {
             apiKey: "AIzaSyDl-pnacA5QLflfbsKWdDTON-AYFJ_HvLY",
             authDomain: "zephyr-messengerer.firebaseapp.com",
@@ -1383,7 +1341,9 @@
         const db = getFirestore(app);
         const storage = getStorage(app);
 
-        // Глобальные переменные состояния
+        // ================================================================
+        // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ СОСТОЯНИЯ
+        // ================================================================
         window.currentUser = null;
         window.currentChat = null;
         window.replyTo = null;
@@ -1393,49 +1353,64 @@
         window.allUsersCache = [];
         window.typingTimeout = null;
         window.currentMessagesQuery = null;
+        window.editingMessageId = null;
+        window.editingMessageChatId = null;
+        window.blockingUserId = null;
+        window.blockingUserName = null;
 
-        // Стили аватаров DiceBear (бесплатные)
+        // Стили аватаров DiceBear
         const avatarStylesList = ['initials', 'bottts', 'avataaars', 'lorelei', 'pixel-art', 'identicon', 'rings', 'thumbs'];
 
         // Эмодзи для реакций
         const reactionEmojisList = ['❤️', '👍', '😂', '😮', '😢', '🔥'];
+
+        // Список доступных тем
+        const availableThemes = ['light', 'dark', 'green', 'blue', 'purple', 'sunset', 'ocean', 'forest'];
 
         // Применяем сохранённые тему и режим
         const savedTheme = localStorage.getItem('zephyr-theme') || 'light';
         const savedMode = localStorage.getItem('zephyr-mode') || 'normal';
         document.body.className = 'theme-' + savedTheme + (savedMode === 'optimized' ? ' optimized' : '');
 
-        // Обновляем активные кнопки темы
+        // ================================================================
+        // ОБНОВЛЕНИЕ КНОПОК ТЕМЫ И РЕЖИМА
+        // ================================================================
         function updateThemeButtons() {
-            document.querySelectorAll('.theme-dot').forEach(d => d.classList.remove('active'));
-            document.querySelector('.dot-' + (localStorage.getItem('zephyr-theme') || 'light'))?.classList.add('active');
+            const currentTheme = localStorage.getItem('zephyr-theme') || 'light';
+            document.querySelectorAll('.theme-dot').forEach(dot => dot.classList.remove('active'));
+            const activeDot = document.querySelector('.dot-' + currentTheme);
+            if (activeDot) activeDot.classList.add('active');
         }
 
-        // Обновляем активные кнопки режима
         function updateModeButtons() {
             const mode = localStorage.getItem('zephyr-mode') || 'normal';
-            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
             if (mode === 'optimized') {
-                document.getElementById('mode-optimized-btn')?.classList.add('active');
+                const optBtn = document.getElementById('mode-optimized-btn');
+                if (optBtn) optBtn.classList.add('active');
             } else {
-                document.getElementById('mode-normal-btn')?.classList.add('active');
+                const normBtn = document.getElementById('mode-normal-btn');
+                if (normBtn) normBtn.classList.add('active');
             }
         }
 
         updateThemeButtons();
         updateModeButtons();
 
-        // Функция получения URL аватарки через DiceBear
+        // ================================================================
+        // ФУНКЦИЯ ПОЛУЧЕНИЯ URL АВАТАРКИ ЧЕРЕЗ DICEBEAR
+        // ================================================================
         function getAvatarUrl(nickname, style) {
             const seed = encodeURIComponent(String(nickname || 'user').trim());
             const avatarStyle = style || window.currentAvatarStyle || 'initials';
-            return `https://api.dicebear.com/9.x/${avatarStyle}/svg?seed=${seed}&backgroundColor=6C5CE7,A29BFE,00B894,FF7675,FDCB6E,74B9FF`;
+            return `https://api.dicebear.com/9.x/${avatarStyle}/svg?seed=${seed}&backgroundColor=6C5CE7,A29BFE,00B894,FF7675,FDCB6E,74B9FF,3498DB,9B59B6,E17055,0ABDE3,27AE60`;
         }
 
         // ================================================================
         // ТЕМА И РЕЖИМ
         // ================================================================
         window.setTheme = function(theme) {
+            if (!availableThemes.includes(theme)) return;
             document.body.className = 'theme-' + theme + (localStorage.getItem('zephyr-mode') === 'optimized' ? ' optimized' : '');
             localStorage.setItem('zephyr-theme', theme);
             updateThemeButtons();
@@ -1614,7 +1589,7 @@
         };
 
         // ================================================================
-        // СОЗДАНИЕ ГРУППОВОГО ЧАТА
+        // СОЗДАНИЕ ГРУППОВОГО ЧАТА С РОЛЯМИ
         // ================================================================
         window.openCreateGroupModal = async function() {
             document.getElementById('create-group-modal').classList.add('show');
@@ -1690,11 +1665,13 @@
                 createdAt: serverTimestamp()
             });
 
-            // Добавляем всех участников в подколлекцию members
+            // Добавляем всех участников в подколлекцию members с ролями
             const batch = writeBatch(db);
             memberIds.forEach(uid => {
+                const role = uid === window.currentUser.uid ? 'creator' : 'member';
                 batch.set(doc(collection(db, `chats/${chatRef.id}/members`), uid), {
                     uid: uid,
+                    role: role,
                     joinedAt: serverTimestamp()
                 });
             });
@@ -1703,6 +1680,35 @@
             document.getElementById('create-group-modal').classList.remove('show');
             startGroupChat(chatRef.id, groupName);
         };
+
+        // ================================================================
+        // ПОЛУЧЕНИЕ РОЛИ ПОЛЬЗОВАТЕЛЯ В ГРУППЕ
+        // ================================================================
+        async function getUserRoleInGroup(groupId, uid) {
+            if (!groupId || !uid) return null;
+            const memberDoc = await getDoc(doc(db, `chats/${groupId}/members`, uid));
+            if (memberDoc.exists()) {
+                return memberDoc.data().role || 'member';
+            }
+            return null;
+        }
+
+        // ================================================================
+        // ПРОВЕРКА ПРАВ НА УДАЛЕНИЕ СООБЩЕНИЯ В ГРУППЕ
+        // ================================================================
+        async function canDeleteMessageInGroup(groupId, messageUid) {
+            if (!window.currentUser) return false;
+            // Создатель группы может удалять любые сообщения
+            const myRole = await getUserRoleInGroup(groupId, window.currentUser.uid);
+            if (myRole === 'creator') return true;
+            // Админ может удалять сообщения обычных участников
+            if (myRole === 'admin' && messageUid !== window.currentUser.uid) {
+                const targetRole = await getUserRoleInGroup(groupId, messageUid);
+                return targetRole === 'member';
+            }
+            // Обычный участник может удалять только свои
+            return messageUid === window.currentUser.uid;
+        }
 
         // ================================================================
         // УПРАВЛЕНИЕ ЧАТАМИ
@@ -1860,7 +1866,7 @@
 
             // Прикреплённое изображение
             if (messageData.fileUrl) {
-                messageHTML += `<br><img src="${messageData.fileUrl}" class="attachment" onclick="window.open('${messageData.fileUrl}')" alt="Прикреплённое фото">`;
+                messageHTML += `<br><img src="${messageData.fileUrl}" class="attachment" onclick="window.open('${messageData.fileUrl}')" alt="Прикреплённое фото" loading="lazy">`;
             }
 
             messageHTML += '</div>';
@@ -1873,9 +1879,11 @@
                 <button class="msg-action-btn" onclick="event.stopPropagation();replyToMessage('${messageId}', '${escapeHtml((messageData.text || '').substring(0, 50))}')" title="Ответить">↩</button>
                 <button class="msg-action-btn" onclick="event.stopPropagation();openReactionPicker('${messageId}')" title="Добавить реакцию">😀</button>`;
 
-            if (isSentByMe) {
-                messageHTML += `<button class="msg-action-btn" onclick="event.stopPropagation();editMessage('${messageId}', '${escapeHtml(messageData.text || '')}')" title="Редактировать">✏️</button>
-                <button class="msg-action-btn" onclick="event.stopPropagation();deleteMessage('${messageId}')" title="Удалить">🗑</button>`;
+            // Кнопки редактирования и удаления (доступны отправителю ИЛИ создателю группы)
+            const canDelete = isSentByMe || (window.currentChat?.isGroup && window.currentChat.groupId);
+            if (canDelete) {
+                messageHTML += `<button class="msg-action-btn" onclick="event.stopPropagation();openEditMessageModal('${messageId}', '${chatId}', '${escapeHtml(messageData.text || '')}')" title="Редактировать">✏️</button>
+                <button class="msg-action-btn" onclick="event.stopPropagation();deleteMessage('${messageId}', '${chatId}', '${messageData.uid}')" title="Удалить">🗑</button>`;
             }
 
             messageHTML += '</div>';
@@ -1894,6 +1902,66 @@
 
             return wrapper;
         }
+
+        // ================================================================
+        // МОДАЛЬНОЕ ОКНО РЕДАКТИРОВАНИЯ СООБЩЕНИЯ
+        // ================================================================
+        window.openEditMessageModal = function(messageId, chatId, currentText) {
+            window.editingMessageId = messageId;
+            window.editingMessageChatId = chatId;
+            document.getElementById('edit-message-text').value = currentText;
+            document.getElementById('edit-message-modal').classList.add('show');
+            setTimeout(() => document.getElementById('edit-message-text').focus(), 150);
+        };
+
+        window.closeEditMessageModal = function() {
+            document.getElementById('edit-message-modal').classList.remove('show');
+            window.editingMessageId = null;
+            window.editingMessageChatId = null;
+        };
+
+        window.saveEditedMessage = async function() {
+            const newText = document.getElementById('edit-message-text').value.trim();
+            if (!newText || !window.editingMessageId || !window.editingMessageChatId) return;
+
+            try {
+                await updateDoc(doc(db, `chats/${window.editingMessageChatId}/messages`, window.editingMessageId), {
+                    text: newText,
+                    edited: true
+                });
+                document.getElementById('edit-message-modal').classList.remove('show');
+                window.editingMessageId = null;
+                window.editingMessageChatId = null;
+            } catch (error) {
+                console.error('Ошибка редактирования:', error);
+                alert('Не удалось отредактировать сообщение.');
+            }
+        };
+
+        window.deleteMessage = async function(messageId, chatId, messageUid) {
+            // Для групповых чатов проверяем права
+            if (window.currentChat?.isGroup && window.currentChat.groupId) {
+                const canDelete = await canDeleteMessageInGroup(window.currentChat.groupId, messageUid);
+                if (!canDelete) {
+                    alert('У вас нет прав на удаление этого сообщения.');
+                    return;
+                }
+            }
+
+            if (!confirm('Удалить это сообщение?')) return;
+
+            try {
+                // Удаляем все реакции на это сообщение
+                const reactionsSnapshot = await getDocs(collection(db, `chats/${chatId}/messages/${messageId}/reactions`));
+                const batch = writeBatch(db);
+                reactionsSnapshot.forEach(docSnap => batch.delete(docSnap.ref));
+                // Удаляем само сообщение
+                batch.delete(doc(db, `chats/${chatId}/messages`, messageId));
+                await batch.commit();
+            } catch (error) {
+                console.error('Ошибка удаления:', error);
+            }
+        };
 
         // ================================================================
         // ОТПРАВКА СООБЩЕНИЙ
@@ -1937,33 +2005,72 @@
         };
 
         // ================================================================
-        // ОТПРАВКА ФАЙЛОВ (ИЗОБРАЖЕНИЙ)
+        // ОТПРАВКА ФАЙЛОВ (ИЗОБРАЖЕНИЙ) — ИСПРАВЛЕНО
         // ================================================================
         window.sendFile = async function(event) {
             const file = event.target.files[0];
-            if (!file || !window.currentChat || !window.currentUser) return;
+            if (!file || !window.currentChat || !window.currentUser) {
+                event.target.value = '';
+                return;
+            }
+
+            // Проверка типа файла
+            if (!file.type.startsWith('image/')) {
+                alert('Можно отправлять только изображения.');
+                event.target.value = '';
+                return;
+            }
+
+            // Проверка размера (максимум 5 МБ)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Файл слишком большой. Максимальный размер: 5 МБ.');
+                event.target.value = '';
+                return;
+            }
 
             const chatId = getChatId();
-            const storageRef = ref(storage, `chat-files/${chatId}/${Date.now()}_${file.name}`);
+            // Создаём уникальное имя файла
+            const fileExtension = file.name.split('.').pop() || 'jpg';
+            const uniqueFileName = Date.now() + '_' + Math.random().toString(36).substring(2, 8) + '.' + fileExtension;
+            const storageRef = ref(storage, `chat-files/${chatId}/${uniqueFileName}`);
 
             try {
-                await uploadBytes(storageRef, file);
-                const downloadURL = await getDownloadURL(storageRef);
+                // Показываем, что идёт загрузка
+                const input = document.getElementById('message-input');
+                input.placeholder = 'Загрузка файла...';
+                input.disabled = true;
 
+                // Загружаем файл в Firebase Storage
+                const uploadResult = await uploadBytes(storageRef, file);
+                // Получаем публичную ссылку
+                const downloadURL = await getDownloadURL(uploadResult.ref);
+
+                // Отправляем сообщение с файлом
                 await addDoc(collection(db, `chats/${chatId}/messages`), {
                     text: '',
                     fileUrl: downloadURL,
                     fileName: file.name,
+                    fileSize: file.size,
                     uid: window.currentUser.uid,
                     nickname: window.currentUser.displayName || window.currentUser.email?.split('@')[0] || 'Аноним',
                     email: window.currentUser.email,
                     timestamp: serverTimestamp()
                 });
 
+                // Восстанавливаем поле ввода
+                input.placeholder = 'Сообщение...';
+                input.disabled = false;
                 event.target.value = '';
                 loadContacts();
             } catch (error) {
                 console.error('Ошибка загрузки файла:', error);
+                alert('Не удалось отправить файл. Проверьте подключение к интернету и попробуйте снова.');
+
+                // Восстанавливаем поле ввода
+                const input = document.getElementById('message-input');
+                input.placeholder = 'Сообщение...';
+                input.disabled = false;
+                event.target.value = '';
             }
         };
 
@@ -2053,37 +2160,37 @@
         }
 
         // ================================================================
-        // РЕДАКТИРОВАНИЕ И УДАЛЕНИЕ СООБЩЕНИЙ
+        // МОДАЛЬНОЕ ОКНО БЛОКИРОВКИ ПОЛЬЗОВАТЕЛЯ
         // ================================================================
-        window.editMessage = async function(messageId, oldText) {
-            const newText = prompt('Редактировать сообщение:', oldText);
-            if (!newText || newText.trim() === oldText.trim()) return;
-
-            const chatId = getChatId();
-            try {
-                await updateDoc(doc(db, `chats/${chatId}/messages`, messageId), {
-                    text: newText.trim(),
-                    edited: true
-                });
-            } catch (error) {
-                console.error('Ошибка редактирования:', error);
-            }
+        window.openBlockUserModal = function(uid, userName) {
+            window.blockingUserId = uid;
+            window.blockingUserName = userName;
+            document.getElementById('block-user-name').textContent = 'Заблокировать пользователя «' + userName + '»?';
+            document.getElementById('block-user-modal').classList.add('show');
         };
 
-        window.deleteMessage = async function(messageId) {
-            if (!confirm('Удалить это сообщение?')) return;
+        window.closeBlockUserModal = function() {
+            document.getElementById('block-user-modal').classList.remove('show');
+            window.blockingUserId = null;
+            window.blockingUserName = null;
+        };
 
-            const chatId = getChatId();
+        window.confirmBlockUser = async function() {
+            if (!window.blockingUserId) return;
+
             try {
-                // Удаляем все реакции на это сообщение
-                const reactionsSnapshot = await getDocs(collection(db, `chats/${chatId}/messages/${messageId}/reactions`));
-                const batch = writeBatch(db);
-                reactionsSnapshot.forEach(docSnap => batch.delete(docSnap.ref));
-                // Удаляем само сообщение
-                batch.delete(doc(db, `chats/${chatId}/messages`, messageId));
-                await batch.commit();
+                await setDoc(doc(db, "users", window.currentUser.uid, "blocked", window.blockingUserId), {
+                    uid: window.blockingUserId,
+                    timestamp: serverTimestamp()
+                }, { merge: true });
+                document.getElementById('block-user-modal').classList.remove('show');
+                window.blockingUserId = null;
+                window.blockingUserName = null;
+                closeChatInfoModal();
+                goBackToChatList();
             } catch (error) {
-                console.error('Ошибка удаления:', error);
+                console.error('Ошибка блокировки:', error);
+                alert('Не удалось заблокировать пользователя.');
             }
         };
 
@@ -2173,7 +2280,7 @@
         };
 
         // ================================================================
-        // ИНФОРМАЦИЯ О ЧАТЕ / ПОЛЬЗОВАТЕЛЕ
+        // ИНФОРМАЦИЯ О ЧАТЕ / ПОЛЬЗОВАТЕЛЕ (С РОЛЯМИ И УПРАВЛЕНИЕМ ГРУППОЙ)
         // ================================================================
         window.openChatInfoModal = async function() {
             if (!window.currentChat) return;
@@ -2187,11 +2294,31 @@
             if (window.currentChat.isGroup) {
                 title.textContent = '👥 ' + (window.currentChat.name || 'Группа');
                 const membersSnapshot = await getDocs(collection(db, `chats/${window.currentChat.groupId}/members`));
-                let membersHTML = '<p style="margin-bottom:8px;">Участники группы:</p>';
+                const groupData = (await getDoc(doc(db, "chats", window.currentChat.groupId))).data();
+                const isCreator = groupData?.createdBy === window.currentUser?.uid;
+
+                let membersHTML = '<p style="margin-bottom:8px;font-weight:600;">Участники группы:</p>';
                 membersSnapshot.forEach(docSnap => {
+                    const memberData = docSnap.data();
                     const memberId = docSnap.id;
-                    membersHTML += `<p>• ${memberId === window.currentUser?.uid ? 'Вы' : memberId}</p>`;
+                    const role = memberData.role || 'member';
+                    const roleLabel = role === 'creator' ? 'Создатель' : role === 'admin' ? 'Админ' : 'Участник';
+                    const roleClass = role === 'creator' ? 'creator' : role === 'admin' ? 'admin' : 'member';
+                    const isMe = memberId === window.currentUser?.uid;
+                    membersHTML += `<p style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
+                        <span>${isMe ? 'Вы' : memberId.substring(0, 8) + '...'} <span class="role-badge ${roleClass}">${roleLabel}</span></span>
+                        ${isCreator && !isMe ? `<button class="btn btn-link" onclick="toggleMemberRole('${memberId}', '${role}')" style="font-size:12px;padding:4px 8px;">${role === 'admin' ? 'Понизить' : 'Повысить'}</button>` : ''}
+                    </p>`;
                 });
+
+                // Кнопки управления группой для создателя
+                if (isCreator) {
+                    membersHTML += `
+                        <hr style="margin:12px 0;border-color:var(--border);">
+                        <button class="btn btn-danger" onclick="deleteGroupChat('${window.currentChat.groupId}')" style="width:100%;margin-top:8px;">🗑 Удалить группу</button>
+                    `;
+                }
+
                 content.innerHTML = membersHTML;
             } else {
                 title.textContent = '👤 ' + (window.currentChat.nickname || window.currentChat.email?.split('@')[0] || 'Пользователь');
@@ -2201,7 +2328,7 @@
                     <p><strong>Никнейм:</strong> ${escapeHtml(userData.nickname || '—')}</p>
                     <p><strong>Email:</strong> ${escapeHtml(userData.email || '—')}</p>
                     <p><strong>Статус:</strong> ${escapeHtml(userData.bio || '—')}</p>
-                    <button class="btn btn-danger" onclick="blockUser('${window.currentChat.uid}')" style="margin-top:12px;width:100%;">🚫 Заблокировать пользователя</button>
+                    <button class="btn btn-danger" onclick="openBlockUserModal('${window.currentChat.uid}', '${escapeHtml(userData.nickname || userData.email?.split('@')[0] || 'Пользователь')}')" style="margin-top:12px;width:100%;">🚫 Заблокировать пользователя</button>
                 `;
             }
         };
@@ -2210,19 +2337,54 @@
             document.getElementById('chat-info-modal').classList.remove('show');
         };
 
-        window.blockUser = async function(uid) {
-            if (!confirm('Вы уверены, что хотите заблокировать этого пользователя? Вы больше не будете видеть его сообщения.')) return;
+        // ================================================================
+        // УПРАВЛЕНИЕ РОЛЯМИ В ГРУППЕ
+        // ================================================================
+        window.toggleMemberRole = async function(memberId, currentRole) {
+            if (!window.currentChat?.groupId) return;
+            const newRole = currentRole === 'admin' ? 'member' : 'admin';
+            try {
+                await updateDoc(doc(db, `chats/${window.currentChat.groupId}/members`, memberId), {
+                    role: newRole
+                });
+                // Обновляем информацию о чате
+                openChatInfoModal();
+            } catch (error) {
+                console.error('Ошибка изменения роли:', error);
+                alert('Не удалось изменить роль участника.');
+            }
+        };
+
+        // ================================================================
+        // УДАЛЕНИЕ ГРУППЫ (ТОЛЬКО ДЛЯ СОЗДАТЕЛЯ)
+        // ================================================================
+        window.deleteGroupChat = async function(groupId) {
+            if (!confirm('Вы уверены, что хотите удалить эту группу? Это действие нельзя отменить.')) return;
 
             try {
-                await setDoc(doc(db, "users", window.currentUser.uid, "blocked", uid), {
-                    uid: uid,
-                    timestamp: serverTimestamp()
-                }, { merge: true });
-                alert('Пользователь заблокирован.');
+                // Удаляем всех участников
+                const membersSnapshot = await getDocs(collection(db, `chats/${groupId}/members`));
+                const batch = writeBatch(db);
+                membersSnapshot.forEach(docSnap => batch.delete(docSnap.ref));
+
+                // Удаляем все сообщения и реакции
+                const messagesSnapshot = await getDocs(collection(db, `chats/${groupId}/messages`));
+                for (const msgDoc of messagesSnapshot.docs) {
+                    const reactionsSnapshot = await getDocs(collection(db, `chats/${groupId}/messages/${msgDoc.id}/reactions`));
+                    reactionsSnapshot.forEach(reactDoc => batch.delete(reactDoc.ref));
+                    batch.delete(msgDoc.ref);
+                }
+
+                // Удаляем сам документ чата
+                batch.delete(doc(db, "chats", groupId));
+                await batch.commit();
+
                 closeChatInfoModal();
                 goBackToChatList();
+                loadContacts();
             } catch (error) {
-                console.error('Ошибка блокировки:', error);
+                console.error('Ошибка удаления группы:', error);
+                alert('Не удалось удалить группу.');
             }
         };
 
@@ -2316,6 +2478,33 @@
                     renderAvatarStyles();
                 });
             }
+
+            // Закрытие модалок по Escape
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    closeSearchModal();
+                    closeSettingsModal();
+                    closeCreateGroupModal();
+                    closeChatInfoModal();
+                    closeEditMessageModal();
+                    closeBlockUserModal();
+                }
+            });
+
+            // Закрытие модалок по клику на оверлей
+            document.querySelectorAll('.modal-overlay').forEach(overlay => {
+                overlay.addEventListener('click', function(event) {
+                    if (event.target === overlay) {
+                        const id = overlay.id;
+                        if (id === 'search-modal') closeSearchModal();
+                        if (id === 'settings-modal') closeSettingsModal();
+                        if (id === 'create-group-modal') closeCreateGroupModal();
+                        if (id === 'chat-info-modal') closeChatInfoModal();
+                        if (id === 'edit-message-modal') closeEditMessageModal();
+                        if (id === 'block-user-modal') closeBlockUserModal();
+                    }
+                });
+            });
         });
 
         // ================================================================
