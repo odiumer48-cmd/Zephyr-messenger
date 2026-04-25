@@ -1329,7 +1329,7 @@
         // ================================================================
         // URL ХОСТИНГА ДЛЯ ЗАГРУЗКИ ФАЙЛОВ (TELEGRAM + CLOUDFLARE)
         // ================================================================
-        const FILE_UPLOAD_URL = 'https://287f3116.zephyr-storage.pages.dev/upload';
+       const FILE_UPLOAD_URL = 'https://api.telegram.org/bot<8587742999:AAGlsqyMqze1uvJzhLUeFStzGwmPBlyzhFw>/sendDocument';
 
         // ================================================================
         // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ СОСТОЯНИЯ
@@ -1998,105 +1998,99 @@
             }
         };
 
-        // ================================================================
-        // ОТПРАВКА ФАЙЛОВ (ИЗОБРАЖЕНИЙ) — ЧЕРЕЗ TELEGRAM ХОСТИНГ
-        // ================================================================
-        window.sendFile = async function(event) {
-            const fileInput = event.target;
-            const file = fileInput.files[0];
-            
-            // Проверки ДО любых действий
-            if (!file) {
-                fileInput.value = '';
-                return;
-            }
+ // ================================================================
+// ОТПРАВКА ФАЙЛОВ — НАПРЯМУЮ ЧЕРЕЗ TELEGRAM BOT API
+// ================================================================
+window.sendFile = async function(event) {
+    const fileInput = event.target;
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        fileInput.value = '';
+        return;
+    }
 
-            if (!window.currentChat || !window.currentUser) {
-                fileInput.value = '';
-                return;
-            }
+    if (!window.currentChat || !window.currentUser) {
+        fileInput.value = '';
+        return;
+    }
 
-            if (!file.type.startsWith('image/')) {
-                alert('Можно отправлять только изображения.');
-                fileInput.value = '';
-                return;
-            }
+    if (!file.type.startsWith('image/')) {
+        alert('Можно отправлять только изображения.');
+        fileInput.value = '';
+        return;
+    }
 
-            if (file.size > 5 * 1024 * 1024) {
-                alert('Файл слишком большой. Максимальный размер: 5 МБ.');
-                fileInput.value = '';
-                return;
-            }
+    if (file.size > 5 * 1024 * 1024) {
+        alert('Файл слишком большой. Максимальный размер: 5 МБ.');
+        fileInput.value = '';
+        return;
+    }
 
-            const chatId = getChatId();
-            const messageInput = document.getElementById('message-input');
-            
-            // Показываем индикатор загрузки
-            const originalPlaceholder = messageInput.placeholder;
-            messageInput.placeholder = 'Загрузка файла...';
-            messageInput.disabled = true;
+    const chatId = getChatId();
+    const messageInput = document.getElementById('message-input');
+    const originalPlaceholder = messageInput.placeholder;
+    messageInput.placeholder = 'Загрузка файла...';
+    messageInput.disabled = true;
 
-            try {
-                // Создаём FormData для отправки на наш хостинг Cloudflare + Telegram
-                const formData = new FormData();
-                formData.append('file', file);
+    try {
+        // Отправляем файл боту в личку
+        const formData = new FormData();
+        formData.append('chat_id', '5831049932'); // Ваш Telegram ID (из того сообщения VersaTools)
+        formData.append('document', file);
 
-                // Отправляем файл на наш Cloudflare хостинг
-                const response = await fetch(FILE_UPLOAD_URL, {
-                    method: 'POST',
-                    body: formData
-                });
+        const response = await fetch(FILE_UPLOAD_URL.replace('sendDocument', 'sendDocument'), {
+            method: 'POST',
+            body: formData
+        });
 
-                if (!response.ok) {
-                    throw new Error('Ошибка загрузки: ' + response.status);
-                }
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Ошибка Telegram:', errorData);
+            throw new Error('Ошибка загрузки в Telegram: ' + (errorData.description || response.status));
+        }
 
-                const result = await response.json();
-                
-                // Пытаемся получить прямую ссылку на изображение
-                // API может вернуть разные форматы
-                let downloadURL = null;
-                if (result.url) {
-                    downloadURL = result.url;
-                } else if (result.src) {
-                    downloadURL = result.src;
-                } else if (result.image) {
-                    downloadURL = result.image;
-                } else if (Array.isArray(result) && result.length > 0) {
-                    downloadURL = result[0].url || result[0].src || result[0].image;
-                } else if (typeof result === 'string') {
-                    downloadURL = result;
-                }
-                
-                if (!downloadURL) {
-                    console.error('Ответ сервера:', result);
-                    throw new Error('Не удалось получить ссылку на изображение из ответа сервера');
-                }
+        const result = await response.json();
+        
+        // Получаем file_id и создаём прямую ссылку
+        const fileId = result.result?.document?.file_id;
+        if (!fileId) {
+            throw new Error('Не удалось получить file_id');
+        }
 
-                // Отправляем сообщение с файлом в чат
-                await addDoc(collection(db, `chats/${chatId}/messages`), {
-                    text: '',
-                    fileUrl: downloadURL,
-                    fileName: file.name,
-                    fileSize: file.size,
-                    uid: window.currentUser.uid,
-                    nickname: window.currentUser.displayName || window.currentUser.email?.split('@')[0] || 'Аноним',
-                    email: window.currentUser.email,
-                    timestamp: serverTimestamp()
-                });
+        // Получаем прямую ссылку через getFile
+        const fileResponse = await fetch(`https://api.telegram.org/bot<8587742999:AAGlsqyMqze1uvJzhLUeFStzGwmPBlyzhFw>/getFile?file_id=${fileId}`);
+        const fileResult = await fileResponse.json();
+        const filePath = fileResult.result?.file_path;
+        
+        if (!filePath) {
+            throw new Error('Не удалось получить путь к файлу');
+        }
 
-                loadContacts();
-            } catch (error) {
-                console.error('Ошибка загрузки файла:', error);
-                alert('Не удалось отправить файл. Проверьте подключение к интернету и попробуйте снова.');
-            } finally {
-                // ВСЕГДА восстанавливаем поле ввода, независимо от результата
-                messageInput.placeholder = originalPlaceholder;
-                messageInput.disabled = false;
-                fileInput.value = '';
-            }
-        };
+        const downloadURL = `https://api.telegram.org/file/bot<8587742999:AAGlsqyMqze1uvJzhLUeFStzGwmPBlyzhFw>/${filePath}`;
 
+        // Отправляем сообщение с файлом в чат
+        await addDoc(collection(db, `chats/${chatId}/messages`), {
+            text: '',
+            fileUrl: downloadURL,
+            fileName: file.name,
+            fileSize: file.size,
+            uid: window.currentUser.uid,
+            nickname: window.currentUser.displayName || window.currentUser.email?.split('@')[0] || 'Аноним',
+            email: window.currentUser.email,
+            timestamp: serverTimestamp()
+        });
+
+        loadContacts();
+    } catch (error) {
+        console.error('Ошибка загрузки файла:', error);
+        alert('Не удалось отправить файл: ' + error.message);
+    } finally {
+        messageInput.placeholder = originalPlaceholder;
+        messageInput.disabled = false;
+        fileInput.value = '';
+    }
+};
         // ================================================================
         // ОТВЕТ НА СООБЩЕНИЕ (РЕПЛАЙ)
         // ================================================================
