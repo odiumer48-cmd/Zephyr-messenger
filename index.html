@@ -1998,8 +1998,8 @@
             }
         };
 
- // ================================================================
-// ОТПРАВКА ФАЙЛОВ — НАПРЯМУЮ ЧЕРЕЗ TELEGRAM BOT API
+// ================================================================
+// ОТПРАВКА ФАЙЛОВ — НАПРЯМУЮ ЧЕРЕЗ TELEGRAM BOT API (В КАНАЛ)
 // ================================================================
 window.sendFile = async function(event) {
     const fileInput = event.target;
@@ -2034,40 +2034,61 @@ window.sendFile = async function(event) {
     messageInput.disabled = true;
 
     try {
-        // Отправляем файл боту в личку
+        // Используем FormData для отправки файла в КАНАЛ
         const formData = new FormData();
-        formData.append('chat_id', '5831049932'); // Ваш Telegram ID (из того сообщения VersaTools)
+        // chat_id канала: заменяем -100 на @ (формат для приватных каналов)
+        // Для канала -1003968376385 используем @channelusername, но у вас нет username
+        // Поэтому используем числовой ID как есть — Telegram понимает и так
+        formData.append('chat_id', '-1003968376385');
         formData.append('document', file);
+        formData.append('caption', 'Фото от ' + (window.currentUser.displayName || window.currentUser.email?.split('@')[0]));
 
-        const response = await fetch(FILE_UPLOAD_URL.replace('sendDocument', 'sendDocument'), {
+        // Отправляем запрос к Telegram Bot API
+        const response = await fetch(FILE_UPLOAD_URL, {
             method: 'POST',
             body: formData
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Ошибка Telegram:', errorData);
-            throw new Error('Ошибка загрузки в Telegram: ' + (errorData.description || response.status));
+            const errorText = await response.text();
+            console.error('Ошибка Telegram:', errorText);
+            throw new Error('Ошибка загрузки: ' + response.status);
         }
 
         const result = await response.json();
         
-        // Получаем file_id и создаём прямую ссылку
-        const fileId = result.result?.document?.file_id;
+        // Извлекаем информацию о файле из ответа
+        const document = result.result?.document;
+        const photo = result.result?.photo; // если бот сам определил как фото
+        
+        // Получаем file_id (может быть в document или в photo)
+        let fileId = null;
+        if (document) {
+            fileId = document.file_id;
+        } else if (photo) {
+            // Бот мог конвертировать в photo, берём самое большое разрешение
+            fileId = photo[photo.length - 1]?.file_id;
+        }
+        
         if (!fileId) {
-            throw new Error('Не удалось получить file_id');
+            console.error('Ответ сервера:', result);
+            throw new Error('Не удалось получить file_id из ответа');
         }
 
-        // Получаем прямую ссылку через getFile
-        const fileResponse = await fetch(`https://api.telegram.org/bot<8587742999:AAGlsqyMqze1uvJzhLUeFStzGwmPBlyzhFw>/getFile?file_id=${fileId}`);
+        // Получаем прямую ссылку через метод getFile (без указания токена в URL!)
+        // Правильный URL: https://api.telegram.org/bot<токен>/getFile?file_id=...
+        const getFileUrl = `https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${fileId}`;
+        const fileResponse = await fetch(getFileUrl);
         const fileResult = await fileResponse.json();
         const filePath = fileResult.result?.file_path;
         
         if (!filePath) {
+            console.error('Результат getFile:', fileResult);
             throw new Error('Не удалось получить путь к файлу');
         }
 
-        const downloadURL = `https://api.telegram.org/file/bot<8587742999:AAGlsqyMqze1uvJzhLUeFStzGwmPBlyzhFw>/${filePath}`;
+        // Правильная прямая ссылка на файл
+        const downloadURL = `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`;
 
         // Отправляем сообщение с файлом в чат
         await addDoc(collection(db, `chats/${chatId}/messages`), {
