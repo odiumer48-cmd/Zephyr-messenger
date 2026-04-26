@@ -1306,7 +1306,6 @@
             limit,
             getDoc
         } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-        // Firebase Storage больше не используется — файлы идут через Telegram хостинг
 
         // ================================================================
         // КОНФИГУРАЦИЯ FIREBASE
@@ -1324,17 +1323,13 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        // Storage не используется
-        // ДАННЫЕ ДЛЯ TELEGRAM BOT API
-// ================================================================
-const BOT_TOKEN = '8587742999:AAGlsqyMqze1uvJzhLUeFStzGwmPBlyzhFw'; // Замените на реальный токен
-const FILE_UPLOAD_URL = `https://api.telegram.org/bot${8587742999:AAGlsqyMqze1uvJzhLUeFStzGwmPBlyzhFw}/sendDocument`;
-const CHANNEL_ID = '-1003968376385'; // ID вашего приватного канала
 
         // ================================================================
-        // URL ХОСТИНГА ДЛЯ ЗАГРУЗКИ ФАЙЛОВ (TELEGRAM + CLOUDFLARE)
+        // ДАННЫЕ ДЛЯ TELEGRAM BOT API (ЗАГРУЗКА ФАЙЛОВ БЕЗ VPN)
         // ================================================================
-       const FILE_UPLOAD_URL = 'https://api.telegram.org/bot<8587742999:AAGlsqyMqze1uvJzhLUeFStzGwmPBlyzhFw>/sendDocument';
+        const BOT_TOKEN = '8587742999:AAGlsqyMqze1uvJzhLUeFStzGwmPBlyzhFw';
+        const CHANNEL_ID = '-1003968376385';
+        const TELEGRAM_API_BASE = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
         // ================================================================
         // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ СОСТОЯНИЯ
@@ -1705,7 +1700,7 @@ const CHANNEL_ID = '-1003968376385'; // ID вашего приватного к�
         }
 
         // ================================================================
-        // УПРАВЛЕНИЕ ЧАТАМИ — СТАРЫЙ МЕТОД getChatId()
+        // УПРАВЛЕНИЕ ЧАТАМИ
         // ================================================================
         function getChatId() {
             if (!window.currentChat || !window.currentUser) return null;
@@ -1814,7 +1809,7 @@ const CHANNEL_ID = '-1003968376385'; // ID вашего приватного к�
 
             const blockedSnapshot = await getDocs(collection(db, "users", window.currentUser.uid, "blocked"));
             const blockedUids = new Set();
-            blockedSnapshot.forEach(doc => blockedUids.add(doc.data().uid));
+            blockedSnapshot.forEach(docSnap => blockedUids.add(docSnap.data().uid));
 
             window.currentMessagesUnsubscribe = onSnapshot(messagesQuery, (snapshot) => {
                 container.innerHTML = '';
@@ -1928,7 +1923,7 @@ const CHANNEL_ID = '-1003968376385'; // ID вашего приватного к�
         };
 
         // ================================================================
-        // УДАЛЕНИЕ СООБЩЕНИЙ С ОЧИСТКОЙ ФАЙЛОВ ИЗ STORAGE
+        // УДАЛЕНИЕ СООБЩЕНИЙ
         // ================================================================
         window.deleteMessage = async function(messageId, chatId, messageUid) {
             if (window.currentChat?.isGroup && window.currentChat.groupId) {
@@ -1942,24 +1937,11 @@ const CHANNEL_ID = '-1003968376385'; // ID вашего приватного к�
             if (!confirm('Удалить это сообщение?')) return;
 
             try {
-                const msgSnap = await getDoc(doc(db, `chats/${chatId}/messages`, messageId));
-                const messageData = msgSnap.exists() ? msgSnap.data() : null;
-
                 const reactionsSnapshot = await getDocs(collection(db, `chats/${chatId}/messages/${messageId}/reactions`));
                 const batch = writeBatch(db);
                 reactionsSnapshot.forEach(docSnap => batch.delete(docSnap.ref));
                 batch.delete(doc(db, `chats/${chatId}/messages`, messageId));
                 await batch.commit();
-
-                // Удаляем файл из Storage если он был прикреплён
-                if (messageData?.fileUrl) {
-                    try {
-                        const fileRef = ref(storage, messageData.fileUrl);
-                        await deleteObject(fileRef);
-                    } catch (e) {
-                        console.log('Файл уже удалён или недоступен:', e);
-                    }
-                }
             } catch (error) {
                 console.error('Ошибка удаления:', error);
             }
@@ -1975,6 +1957,11 @@ const CHANNEL_ID = '-1003968376385'; // ID вашего приватного к�
             if (!text || !window.currentChat || !window.currentUser) return;
 
             const chatId = getChatId();
+            if (!chatId) {
+                console.error('Не удалось определить chatId');
+                return;
+            }
+
             const messageData = {
                 text: text,
                 uid: window.currentUser.uid,
@@ -2003,120 +1990,127 @@ const CHANNEL_ID = '-1003968376385'; // ID вашего приватного к�
             }
         };
 
-// ================================================================
-// ОТПРАВКА ФАЙЛОВ — НАПРЯМУЮ ЧЕРЕЗ TELEGRAM BOT API (В КАНАЛ)
-// ================================================================
-window.sendFile = async function(event) {
-    const fileInput = event.target;
-    const file = fileInput.files[0];
-    
-    if (!file) {
-        fileInput.value = '';
-        return;
-    }
+        // ================================================================
+        // ОТПРАВКА ФАЙЛОВ — НАПРЯМУЮ ЧЕРЕЗ TELEGRAM BOT API В КАНАЛ
+        // ================================================================
+        window.sendFile = async function(event) {
+            const fileInput = event.target;
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                fileInput.value = '';
+                return;
+            }
 
-    if (!window.currentChat || !window.currentUser) {
-        fileInput.value = '';
-        return;
-    }
+            if (!window.currentChat || !window.currentUser) {
+                fileInput.value = '';
+                return;
+            }
 
-    if (!file.type.startsWith('image/')) {
-        alert('Можно отправлять только изображения.');
-        fileInput.value = '';
-        return;
-    }
+            if (!file.type.startsWith('image/')) {
+                alert('Можно отправлять только изображения.');
+                fileInput.value = '';
+                return;
+            }
 
-    if (file.size > 5 * 1024 * 1024) {
-        alert('Файл слишком большой. Максимальный размер: 5 МБ.');
-        fileInput.value = '';
-        return;
-    }
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Файл слишком большой. Максимальный размер: 5 МБ.');
+                fileInput.value = '';
+                return;
+            }
 
-    const chatId = getChatId();
-    const messageInput = document.getElementById('message-input');
-    const originalPlaceholder = messageInput.placeholder;
-    messageInput.placeholder = 'Загрузка файла...';
-    messageInput.disabled = true;
+            const chatId = getChatId();
+            if (!chatId) {
+                console.error('Не удалось определить chatId для отправки файла');
+                fileInput.value = '';
+                return;
+            }
 
-    try {
-        // Используем FormData для отправки файла в КАНАЛ
-        const formData = new FormData();
-        // chat_id канала: заменяем -100 на @ (формат для приватных каналов)
-        // Для канала -1003968376385 используем @channelusername, но у вас нет username
-        // Поэтому используем числовой ID как есть — Telegram понимает и так
-        formData.append('chat_id', '-1003968376385');
-        formData.append('document', file);
-        formData.append('caption', 'Фото от ' + (window.currentUser.displayName || window.currentUser.email?.split('@')[0]));
+            const messageInput = document.getElementById('message-input');
+            const originalPlaceholder = messageInput.placeholder;
+            messageInput.placeholder = 'Загрузка файла...';
+            messageInput.disabled = true;
 
-        // Отправляем запрос к Telegram Bot API
-        const response = await fetch(FILE_UPLOAD_URL, {
-            method: 'POST',
-            body: formData
-        });
+            try {
+                const formData = new FormData();
+                formData.append('chat_id', CHANNEL_ID);
+                formData.append('document', file);
+                formData.append('caption', 'Фото от ' + (window.currentUser.displayName || window.currentUser.email?.split('@')[0] || 'Пользователя'));
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Ошибка Telegram:', errorText);
-            throw new Error('Ошибка загрузки: ' + response.status);
-        }
+                // Отправляем файл в канал через бота
+                const response = await fetch(`${TELEGRAM_API_BASE}/sendDocument`, {
+                    method: 'POST',
+                    body: formData
+                });
 
-        const result = await response.json();
-        
-        // Извлекаем информацию о файле из ответа
-        const document = result.result?.document;
-        const photo = result.result?.photo; // если бот сам определил как фото
-        
-        // Получаем file_id (может быть в document или в photo)
-        let fileId = null;
-        if (document) {
-            fileId = document.file_id;
-        } else if (photo) {
-            // Бот мог конвертировать в photo, берём самое большое разрешение
-            fileId = photo[photo.length - 1]?.file_id;
-        }
-        
-        if (!fileId) {
-            console.error('Ответ сервера:', result);
-            throw new Error('Не удалось получить file_id из ответа');
-        }
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Ошибка Telegram sendDocument:', errorText);
+                    throw new Error('Ошибка загрузки: ' + response.status);
+                }
 
-        // Получаем прямую ссылку через метод getFile (без указания токена в URL!)
-        // Правильный URL: https://api.telegram.org/bot<токен>/getFile?file_id=...
-        const getFileUrl = `https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${fileId}`;
-        const fileResponse = await fetch(getFileUrl);
-        const fileResult = await fileResponse.json();
-        const filePath = fileResult.result?.file_path;
-        
-        if (!filePath) {
-            console.error('Результат getFile:', fileResult);
-            throw new Error('Не удалось получить путь к файлу');
-        }
+                const result = await response.json();
+                if (!result.ok) {
+                    console.error('Ошибка Telegram API:', result);
+                    throw new Error('Ошибка Telegram: ' + (result.description || 'неизвестная ошибка'));
+                }
+                
+                // Получаем file_id из ответа
+                const documentFile = result.result?.document;
+                let fileId = null;
+                if (documentFile?.file_id) {
+                    fileId = documentFile.file_id;
+                } else if (result.result?.photo) {
+                    // На случай если бот конвертировал документ в фото
+                    const photos = result.result.photo;
+                    fileId = photos[photos.length - 1]?.file_id;
+                }
+                
+                if (!fileId) {
+                    console.error('Структура ответа sendDocument:', JSON.stringify(result));
+                    throw new Error('Не удалось получить file_id. Проверьте логи консоли.');
+                }
 
-        // Правильная прямая ссылка на файл
-        const downloadURL = `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`;
+                // Получаем прямую ссылку через getFile
+                const getFileResponse = await fetch(`${TELEGRAM_API_BASE}/getFile?file_id=${fileId}`);
+                const getFileResult = await getFileResponse.json();
 
-        // Отправляем сообщение с файлом в чат
-        await addDoc(collection(db, `chats/${chatId}/messages`), {
-            text: '',
-            fileUrl: downloadURL,
-            fileName: file.name,
-            fileSize: file.size,
-            uid: window.currentUser.uid,
-            nickname: window.currentUser.displayName || window.currentUser.email?.split('@')[0] || 'Аноним',
-            email: window.currentUser.email,
-            timestamp: serverTimestamp()
-        });
+                if (!getFileResult.ok) {
+                    console.error('Ошибка getFile:', getFileResult);
+                    throw new Error('Ошибка получения файла: ' + (getFileResult.description || 'неизвестная ошибка'));
+                }
 
-        loadContacts();
-    } catch (error) {
-        console.error('Ошибка загрузки файла:', error);
-        alert('Не удалось отправить файл: ' + error.message);
-    } finally {
-        messageInput.placeholder = originalPlaceholder;
-        messageInput.disabled = false;
-        fileInput.value = '';
-    }
-};
+                const filePath = getFileResult.result?.file_path;
+                if (!filePath) {
+                    console.error('Результат getFile:', getFileResult);
+                    throw new Error('Не удалось получить путь к файлу');
+                }
+
+                const downloadURL = `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`;
+
+                // Отправляем сообщение с файлом в чат
+                await addDoc(collection(db, `chats/${chatId}/messages`), {
+                    text: '',
+                    fileUrl: downloadURL,
+                    fileName: file.name,
+                    fileSize: file.size,
+                    uid: window.currentUser.uid,
+                    nickname: window.currentUser.displayName || window.currentUser.email?.split('@')[0] || 'Аноним',
+                    email: window.currentUser.email,
+                    timestamp: serverTimestamp()
+                });
+
+                loadContacts();
+            } catch (error) {
+                console.error('Ошибка загрузки файла:', error);
+                alert('Не удалось отправить файл: ' + error.message);
+            } finally {
+                messageInput.placeholder = originalPlaceholder;
+                messageInput.disabled = false;
+                fileInput.value = '';
+            }
+        };
+
         // ================================================================
         // ОТВЕТ НА СООБЩЕНИЕ (РЕПЛАЙ)
         // ================================================================
@@ -2593,6 +2587,12 @@ window.sendFile = async function(event) {
                 if (window.currentTypingUnsubscribe) {
                     window.currentTypingUnsubscribe();
                     window.currentTypingUnsubscribe = null;
+                }
+
+                // Удаляем обработчик beforeunload при выходе
+                if (window.beforeUnloadHandler) {
+                    window.removeEventListener('beforeunload', window.beforeUnloadHandler);
+                    window.beforeUnloadHandler = null;
                 }
             }
         });
