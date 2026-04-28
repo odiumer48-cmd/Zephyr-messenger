@@ -2171,85 +2171,76 @@ window.sendMessage = async function() {
         // ================================================================
         // СПИСОК КОНТАКТОВ
         // ================================================================
-        async function loadContacts() {
-            if (!window.currentUser) return;
+async function loadContacts() {
+    if (!window.currentUser) return;
 
-            const container = document.getElementById('contacts-list');
-            const usersSnapshot = await getDocs(collection(db, "users"));
-            const contacts = [];
-
-            usersSnapshot.forEach(docSnap => {
-                if (docSnap.id !== window.currentUser.uid) {
-                    contacts.push({ uid: docSnap.id, ...docSnap.data() });
-                }
-            });
-
-            // Групповые чаты
-            const groupsSnapshot = await getDocs(query(collection(db, "chats"), where("isGroup", "==", true)));
-            const groups = [];
-
-            for (const groupDoc of groupsSnapshot.docs) {
-                const memberSnapshot = await getDocs(collection(db, `chats/${groupDoc.id}/members`));
-                const isMember = memberSnapshot.docs.find(docSnap => docSnap.id === window.currentUser.uid);
-                if (isMember) {
-                    groups.push({ groupId: groupDoc.id, ...groupDoc.data() });
-                }
+    const container = document.getElementById('contacts-list');
+    
+    try {
+        // Загружаем пользователей
+        const usersSnapshot = await getDocs(collection(db, "users"));
+        const contacts = [];
+        usersSnapshot.forEach(docSnap => {
+            if (docSnap.id !== window.currentUser.uid) {
+                contacts.push({ uid: docSnap.id, ...docSnap.data() });
             }
+        });
 
-            let listHTML = '';
-
-            groups.forEach(group => {
-                listHTML += `
-                    <div class="contact-item" onclick="startGroupChat('${group.groupId}', '${escapeHtml(group.name || 'Группа')}')">
-                        <div class="avatar">
-                            <img src="${getAvatarUrl(group.name || 'Группа')}" width="44" height="44" alt="">
-                        </div>
-                        <div class="contact-info">
-                            <div class="contact-name">👥 ${escapeHtml(group.name || 'Группа')}</div>
-                        </div>
-                    </div>`;
-            });
-
-            contacts.forEach(contact => {
-                listHTML += `
-                    <div class="contact-item" onclick="startChat('${contact.uid}', '${escapeHtml(contact.nickname || contact.email?.split('@')[0])}', '${escapeHtml(contact.email)}')">
-                        <div class="avatar">
-                            <img src="${getAvatarUrl(contact.nickname || contact.email, contact.avatarStyle)}" width="44" height="44" alt="">
-                            <div class="online-dot offline" id="dot-${contact.uid}"></div>
-                        </div>
-                        <div class="contact-info">
-                            <div class="contact-name">${escapeHtml(contact.nickname || contact.email?.split('@')[0])}</div>
-                            <div class="contact-lastmsg">${escapeHtml(contact.bio || '')}</div>
-                        </div>
-                    </div>`;
-            });
-
-            container.innerHTML = listHTML || '<div class="no-contacts">🔍 Используйте поиск,<br>чтобы найти собеседников</div>';
-
-            updateOnlineDots();
+        // Загружаем группы, в которых состоит пользователь
+        const groupsSnapshot = await getDocs(query(collection(db, "chats"), where("isGroup", "==", true)));
+        const groups = [];
+        for (const groupDoc of groupsSnapshot.docs) {
+            const memberSnapshot = await getDocs(collection(db, `chats/${groupDoc.id}/members`));
+            const isMember = memberSnapshot.docs.find(docSnap => docSnap.id === window.currentUser.uid);
+            if (isMember) {
+                groups.push({ groupId: groupDoc.id, ...groupDoc.data() });
+            }
         }
 
-        async function updateOnlineDots() {
-            const statusSnapshot = await getDocs(collection(db, "status"));
-            statusSnapshot.forEach(docSnap => {
-                const uid = docSnap.id;
-                if (uid.endsWith('_typing')) return;
-                const dotElement = document.getElementById('dot-' + uid);
-                if (dotElement) {
-                    const statusData = docSnap.data();
-                    dotElement.className = 'online-dot ' + (statusData.online ? 'online' : 'offline');
-                }
-            });
+        let listHTML = '';
+
+        // Группы
+        groups.forEach(group => {
+            listHTML += `
+                <div class="contact-item" onclick="startGroupChat('${group.groupId}', '${escapeHtml(group.name || 'Группа')}')">
+                    <div class="avatar">
+                        <img src="${getAvatarUrl(group.name || 'Группа')}" width="44" height="44" alt="">
+                    </div>
+                    <div class="contact-info">
+                        <div class="contact-name">👥 ${escapeHtml(group.name || 'Группа')}</div>
+                    </div>
+                </div>`;
+        });
+
+        // Пользователи
+        contacts.forEach(contact => {
+            listHTML += `
+                <div class="contact-item" onclick="startChat('${contact.uid}', '${escapeHtml(contact.nickname || contact.email?.split('@')[0])}', '${escapeHtml(contact.email)}')">
+                    <div class="avatar">
+                        <img src="${getAvatarUrl(contact.nickname || contact.email, contact.avatarStyle)}" width="44" height="44" alt="">
+                        <div class="online-dot offline" id="dot-${contact.uid}"></div>
+                    </div>
+                    <div class="contact-info">
+                        <div class="contact-name">${escapeHtml(contact.nickname || contact.email?.split('@')[0])}</div>
+                        <div class="contact-lastmsg">${escapeHtml(contact.bio || '')}</div>
+                    </div>
+                </div>`;
+        });
+
+        container.innerHTML = listHTML || '<div class="no-contacts">🔍 Используйте поиск,<br>чтобы найти собеседников</div>';
+
+        // Безопасно обновляем точки онлайна
+        try {
+            await updateOnlineDots();
+        } catch (e) {
+            // ничего не делаем, точки просто останутся серыми
         }
 
-        window.filterContacts = function() {
-            const searchQuery = document.getElementById('contact-search').value.toLowerCase();
-            document.querySelectorAll('.contact-item').forEach(item => {
-                const name = item.querySelector('.contact-name')?.textContent?.toLowerCase() || '';
-                item.style.display = name.includes(searchQuery) ? '' : 'none';
-            });
-        };
-
+    } catch (error) {
+        console.error('Ошибка загрузки контактов:', error);
+        container.innerHTML = '<div class="no-contacts">Ошибка загрузки контактов.</div>';
+    }
+}
         // ================================================================
         // ИНФОРМАЦИЯ О ЧАТЕ / ПОЛЬЗОВАТЕЛЕ
         // ================================================================
