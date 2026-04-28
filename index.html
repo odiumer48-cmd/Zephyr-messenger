@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>⚡ Zephyr Messenger</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* ================================================================
-           ZEPHYR MESSENGER — ПОЛНАЯ ВЕРСИЯ
+           ZEPHYR MESSENGER — ПОЛНАЯ ВЕРСИЯ (ИСПРАВЛЕННАЯ)
            ================================================================ */
 
         /* ---------- СВЕТЛАЯ ТЕМА (БАЗОВАЯ) ---------- */
@@ -458,6 +459,8 @@
             gap: 6px;
             background: var(--sidebar-bg);
             -webkit-overflow-scrolling: touch;
+            /* ИСПРАВЛЕНИЕ: контейнер не сжимается меньше своего содержимого */
+            min-height: 0;
         }
 
         .message-wrapper {
@@ -743,6 +746,30 @@
             border-color: var(--primary);
         }
 
+        /* ---------- ГЛАЗИК ДЛЯ ПАРОЛЯ ---------- */
+        .password-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .password-wrapper input {
+            padding-right: 45px;
+        }
+
+        .toggle-password-btn {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 20px;
+            color: var(--text-secondary);
+            padding: 5px;
+            line-height: 1;
+        }
+
         .btn {
             padding: 13px;
             border: none;
@@ -818,44 +845,14 @@
             transform: scale(1.1);
         }
 
-        .dot-light {
-            background: #F0F0F5;
-            border: 1px solid #ccc;
-        }
-
-        .dot-dark {
-            background: #1A1A2E;
-        }
-
-        .dot-green {
-            background: #E0FFF0;
-            border: 1px solid #00B894;
-        }
-
-        .dot-blue {
-            background: #E0F0FF;
-            border: 1px solid #3498DB;
-        }
-
-        .dot-purple {
-            background: #F8E8FF;
-            border: 1px solid #9B59B6;
-        }
-
-        .dot-sunset {
-            background: #FFE8E0;
-            border: 1px solid #E17055;
-        }
-
-        .dot-ocean {
-            background: #E0FAFF;
-            border: 1px solid #0ABDE3;
-        }
-
-        .dot-forest {
-            background: #E0FFE8;
-            border: 1px solid #27AE60;
-        }
+        .dot-light { background: #F0F0F5; border: 1px solid #ccc; }
+        .dot-dark { background: #1A1A2E; }
+        .dot-green { background: #E0FFF0; border: 1px solid #00B894; }
+        .dot-blue { background: #E0F0FF; border: 1px solid #3498DB; }
+        .dot-purple { background: #F8E8FF; border: 1px solid #9B59B6; }
+        .dot-sunset { background: #FFE8E0; border: 1px solid #E17055; }
+        .dot-ocean { background: #E0FAFF; border: 1px solid #0ABDE3; }
+        .dot-forest { background: #E0FFE8; border: 1px solid #27AE60; }
 
         .mode-btn {
             padding: 8px 16px;
@@ -1077,125 +1074,43 @@
         /* ================================================================
            СКРОЛЛБАР
            ================================================================ */
-        ::-webkit-scrollbar {
-            width: 5px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #ccc;
-            border-radius: 10px;
-        }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
 
         /* ================================================================
            АНИМАЦИИ
            ================================================================ */
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(6px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         /* ================================================================
-           МОБИЛЬНАЯ АДАПТАЦИЯ (ПОЛНОСТЬЮ ПЕРЕСТРОЕННАЯ)
+           МОБИЛЬНАЯ АДАПТАЦИЯ
            ================================================================ */
         @media (max-width: 700px) {
-            body {
-                padding: 0;
-            }
-
-            .container {
-                height: 100vh;
-                height: 100dvh;
-                border-radius: 0;
-                max-width: 100%;
-            }
-
-            .sidebar {
-                width: 100%;
-                min-width: 100%;
-                max-width: 100%;
-                border-right: none;
-            }
-
-            .container.chat-open .sidebar {
-                display: none;
-            }
-
-            .chat-area {
-                width: 100%;
-                display: flex;
-            }
-
-            .container:not(.chat-open) .chat-area {
-                display: none;
-            }
-
-            .container.chat-open .chat-area {
-                display: flex;
-            }
-
-            .mobile-back-btn {
-                display: flex;
-            }
-
-            .message-wrapper {
-                max-width: 88%;
-            }
-
-            .modal {
-                max-width: 100%;
-                border-radius: 16px 16px 0 0;
-                max-height: 85vh;
-            }
-
-            .modal-overlay {
-                align-items: flex-end;
-            }
-
-            .btn-send {
-                width: 44px;
-                height: 44px;
-                font-size: 19px;
-            }
-
-            .message-input-area input {
-                padding: 12px 18px;
-                font-size: 15px;
-            }
+            body { padding: 0; }
+            .container { height: 100vh; height: 100dvh; border-radius: 0; max-width: 100%; }
+            .sidebar { width: 100%; min-width: 100%; max-width: 100%; border-right: none; }
+            .container.chat-open .sidebar { display: none; }
+            .chat-area { width: 100%; display: flex; }
+            .container:not(.chat-open) .chat-area { display: none; }
+            .container.chat-open .chat-area { display: flex; }
+            .mobile-back-btn { display: flex; }
+            .message-wrapper { max-width: 88%; }
+            .modal { max-width: 100%; border-radius: 16px 16px 0 0; max-height: 85vh; }
+            .modal-overlay { align-items: flex-end; }
+            .btn-send { width: 44px; height: 44px; font-size: 19px; }
+            .message-input-area input { padding: 12px 18px; font-size: 15px; }
         }
 
         @media (max-width: 380px) {
-            .sidebar-header {
-                padding: 12px 14px;
-            }
-
-            .logo-text {
-                font-size: 19px;
-            }
-
-            .icon-btn {
-                width: 32px;
-                height: 32px;
-                font-size: 15px;
-            }
-
-            .chat-header {
-                padding: 10px 12px;
-            }
-
-            .message {
-                padding: 7px 11px;
-                font-size: 13px;
-            }
+            .sidebar-header { padding: 12px 14px; }
+            .logo-text { font-size: 19px; }
+            .icon-btn { width: 32px; height: 32px; font-size: 15px; }
+            .chat-header { padding: 10px 12px; }
+            .message { padding: 7px 11px; font-size: 13px; }
         }
     </style>
 </head>
@@ -1297,7 +1212,10 @@
         <form class="auth-form" onsubmit="handleAuth(event)" style="margin-top:12px;">
             <input type="text" id="auth-nickname" placeholder="Никнейм" required minlength="3" autocomplete="username">
             <input type="email" id="auth-email" placeholder="Email" required autocomplete="email">
-            <input type="password" id="auth-password" placeholder="Пароль (минимум 6 символов)" required minlength="6" autocomplete="current-password">
+            <div class="password-wrapper">
+                <input type="password" id="auth-password" placeholder="Пароль (минимум 6 символов)" required minlength="6" autocomplete="current-password">
+                <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility()" title="Показать пароль">👁️</button>
+            </div>
             <div class="error-msg" id="error-msg"></div>
             <button type="submit" class="btn btn-primary" id="auth-btn">Войти</button>
             <button type="button" class="btn btn-link" onclick="toggleAuthMode()" id="toggle-btn">
@@ -1507,6 +1425,7 @@
         window.editingMessageChatId = null;
         window.blockingUserId = null;
         window.blockingUserName = null;
+        window.statusUnsubscribe = null;
 
         // Стили аватаров DiceBear (бесплатные)
         const avatarStylesList = ['initials', 'bottts', 'avataaars', 'lorelei', 'pixel-art', 'identicon', 'rings', 'thumbs'];
@@ -1549,6 +1468,19 @@
             return `https://api.dicebear.com/9.x/${avatarStyle}/svg?seed=${seed}&backgroundColor=6C5CE7,A29BFE,00B894,FF7675,FDCB6E,74B9FF,3498DB,9B59B6,E17055,0ABDE3,27AE60`;
         }
 
+        // Переключение видимости пароля
+        window.togglePasswordVisibility = function() {
+            const passwordInput = document.getElementById('auth-password');
+            const toggleBtn = document.querySelector('.toggle-password-btn');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleBtn.textContent = '🙈';
+            } else {
+                passwordInput.type = 'password';
+                toggleBtn.textContent = '👁️';
+            }
+        };
+
         // ================================================================
         // ТЕМА И РЕЖИМ
         // ================================================================
@@ -1590,14 +1522,10 @@
             try {
                 let userCredential;
                 if (window.isLoginMode) {
-                    // Вход в существующий аккаунт
                     userCredential = await signInWithEmailAndPassword(auth, email, password);
                 } else {
-                    // Регистрация нового аккаунта
                     userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                    // Обновляем профиль в Auth
                     await updateProfile(userCredential.user, { displayName: nickname });
-                    // Создаём документ пользователя в Firestore
                     await setDoc(doc(db, "users", userCredential.user.uid), {
                         nickname: nickname,
                         email: email,
@@ -1613,13 +1541,11 @@
         };
 
         window.logout = async function() {
-            // Устанавливаем статус "офлайн" перед выходом
             if (window.currentUser) {
                 await setDoc(doc(db, "status", window.currentUser.uid), {
                     online: false,
                     lastSeen: serverTimestamp()
                 }, { merge: true });
-                // Удаляем статус печати
                 await deleteDoc(doc(db, "status", window.currentUser.uid + '_typing')).catch(() => {});
             }
             await signOut(auth);
@@ -1656,7 +1582,6 @@
                 timestamp: serverTimestamp()
             }, { merge: true });
 
-            // Автоматически сбрасываем статус печати через 3 секунды бездействия
             if (window.typingTimeout) clearTimeout(window.typingTimeout);
             window.typingTimeout = setTimeout(async () => {
                 await deleteDoc(doc(db, "status", window.currentUser.uid + '_typing')).catch(() => {});
@@ -1666,7 +1591,6 @@
         function watchTypingStatus(chatId) {
             if (!window.currentChat) return;
 
-            // Отписываемся от предыдущей подписки если есть
             if (window.currentTypingUnsubscribe) {
                 window.currentTypingUnsubscribe();
                 window.currentTypingUnsubscribe = null;
@@ -1704,9 +1628,7 @@
 
             usersSnapshot.forEach(docSnap => {
                 const userData = docSnap.data();
-                // Пропускаем себя
                 if (docSnap.id === window.currentUser?.uid) return;
-                // Ищем ТОЛЬКО по никнейму
                 const userNickname = (userData.nickname || '').toLowerCase();
                 if (userNickname.includes(searchText)) {
                     results.push({ uid: docSnap.id, ...userData });
@@ -1748,7 +1670,6 @@
             document.getElementById('group-member-results').innerHTML = '';
             window.selectedGroupMembers = [];
             renderSelectedMembers();
-            // Загружаем всех пользователей для поиска
             const usersSnapshot = await getDocs(collection(db, "users"));
             window.allUsersCache = [];
             usersSnapshot.forEach(docSnap => {
@@ -1806,7 +1727,6 @@
             const groupName = document.getElementById('group-name').value.trim() || 'Новая группа';
             const memberIds = [window.currentUser.uid, ...window.selectedGroupMembers.map(m => m.uid)];
 
-            // Создаём документ чата
             const chatRef = doc(collection(db, "chats"));
             await setDoc(chatRef, {
                 name: groupName,
@@ -1815,7 +1735,6 @@
                 createdAt: serverTimestamp()
             });
 
-            // Добавляем всех участников в подколлекцию members с ролями
             const batch = writeBatch(db);
             memberIds.forEach(uid => {
                 const role = uid === window.currentUser.uid ? 'creator' : 'member';
@@ -1848,15 +1767,12 @@
         // ================================================================
         async function canDeleteMessageInGroup(groupId, messageUid) {
             if (!window.currentUser) return false;
-            // Создатель группы может удалять любые сообщения
             const myRole = await getUserRoleInGroup(groupId, window.currentUser.uid);
             if (myRole === 'creator') return true;
-            // Админ может удалять сообщения обычных участников
             if (myRole === 'admin' && messageUid !== window.currentUser.uid) {
                 const targetRole = await getUserRoleInGroup(groupId, messageUid);
                 return targetRole === 'member';
             }
-            // Обычный участник может удалять только свои
             return messageUid === window.currentUser.uid;
         }
 
@@ -1865,9 +1781,7 @@
         // ================================================================
         function getChatId() {
             if (!window.currentChat || !window.currentUser) return null;
-            // Групповой чат использует свой ID
             if (window.currentChat.groupId) return window.currentChat.groupId;
-            // Личный чат: ID формируется из двух UID, отсортированных по алфавиту
             return [window.currentUser.uid, window.currentChat.uid].sort().join('_');
         }
 
@@ -1897,7 +1811,6 @@
         }
 
         async function openChatScreen(displayName, avatarUrl, isGroupChat) {
-            // Скрываем приветственный экран, показываем чат
             document.getElementById('welcome-screen').style.display = 'none';
             document.getElementById('chat-screen').style.display = 'flex';
             document.getElementById('chat-user-name').textContent = displayName;
@@ -1915,16 +1828,10 @@
                 updateChatHeaderStatus(statusData);
             }
 
-            // На мобилках показываем чат, скрываем боковую панель
             document.getElementById('main-container').classList.add('chat-open');
 
-            // Запускаем отслеживание печати
             watchTypingStatus(chatId);
-
-            // Загружаем сообщения
             loadMessages();
-
-            // Обновляем список контактов
             loadContacts();
         }
 
@@ -1944,14 +1851,12 @@
             }
         }
 
-        // Кнопка "Назад" на мобильных устройствах
         window.goBackToChatList = function() {
             document.getElementById('main-container').classList.remove('chat-open');
             window.currentChat = null;
             document.getElementById('chat-screen').style.display = 'none';
             document.getElementById('welcome-screen').style.display = 'block';
 
-            // Отписываемся от подписок при уходе из чата
             if (window.currentMessagesUnsubscribe) {
                 window.currentMessagesUnsubscribe();
                 window.currentMessagesUnsubscribe = null;
@@ -1975,7 +1880,6 @@
                 orderBy("timestamp", "asc")
             );
 
-            // Отписываемся от предыдущей подписки если есть
             if (window.currentMessagesUnsubscribe) {
                 window.currentMessagesUnsubscribe();
                 window.currentMessagesUnsubscribe = null;
@@ -2007,39 +1911,31 @@
 
             let messageHTML = '';
 
-            // Ответ на сообщение (реплай)
             if (messageData.replyTo) {
                 messageHTML += `<div class="reply-preview" onclick="scrollToMessage('${messageData.replyTo}')">↩ ${escapeHtml(messageData.replyToPreview || 'сообщение')}</div>`;
             }
 
-            // Основное тело сообщения
             messageHTML += '<div class="message">';
 
-            // Отправитель (для групповых чатов и полученных сообщений)
             const senderName = escapeHtml(messageData.nickname || messageData.email?.split('@')[0] || 'Аноним');
             if (window.currentChat?.isGroup && !isSentByMe) {
                 messageHTML += `<span class="msg-sender">${senderName}</span>`;
             }
 
-            // Текст сообщения
             messageHTML += escapeHtml(messageData.text || '');
 
-            // Метка "изменено"
             if (messageData.edited) {
                 messageHTML += '<span class="msg-edited">(изм.)</span>';
             }
 
             messageHTML += '</div>';
 
-            // Реакции
             messageHTML += '<div class="reactions-bar" id="reactions-' + messageId + '"></div>';
 
-            // Кнопки действий над сообщением
             messageHTML += `<div class="message-actions">
                 <button class="msg-action-btn" onclick="event.stopPropagation();replyToMessage('${messageId}', '${escapeHtml((messageData.text || '').substring(0, 50))}')" title="Ответить">↩</button>
                 <button class="msg-action-btn" onclick="event.stopPropagation();openReactionPicker('${messageId}')" title="Добавить реакцию">😀</button>`;
 
-            // Кнопки редактирования и удаления (доступны отправителю ИЛИ создателю группы)
             const canDelete = isSentByMe || (window.currentChat?.isGroup && window.currentChat.groupId);
             if (canDelete) {
                 messageHTML += `<button class="msg-action-btn" onclick="event.stopPropagation();openEditMessageModal('${messageId}', '${chatId}', '${escapeHtml(messageData.text || '')}')" title="Редактировать">✏️</button>
@@ -2048,7 +1944,6 @@
 
             messageHTML += '</div>';
 
-            // Выбор реакции
             messageHTML += '<div class="reaction-picker" id="rp-' + messageId + '">' +
                 reactionEmojisList.map(emoji =>
                     `<span class="reaction-emoji" onclick="event.stopPropagation();addReaction('${messageId}', '${emoji}')">${emoji}</span>`
@@ -2057,7 +1952,6 @@
 
             wrapper.innerHTML = messageHTML;
 
-            // Загружаем реакции для этого сообщения
             loadReactions(messageId, chatId);
 
             return wrapper;
@@ -2102,7 +1996,6 @@
         // УДАЛЕНИЕ СООБЩЕНИЙ
         // ================================================================
         window.deleteMessage = async function(messageId, chatId, messageUid) {
-            // Для групповых чатов проверяем права
             if (window.currentChat?.isGroup && window.currentChat.groupId) {
                 const canDelete = await canDeleteMessageInGroup(window.currentChat.groupId, messageUid);
                 if (!canDelete) {
@@ -2114,11 +2007,9 @@
             if (!confirm('Удалить это сообщение?')) return;
 
             try {
-                // Удаляем все реакции на это сообщение
                 const reactionsSnapshot = await getDocs(collection(db, `chats/${chatId}/messages/${messageId}/reactions`));
                 const batch = writeBatch(db);
                 reactionsSnapshot.forEach(docSnap => batch.delete(docSnap.ref));
-                // Удаляем само сообщение
                 batch.delete(doc(db, `chats/${chatId}/messages`, messageId));
                 await batch.commit();
             } catch (error) {
@@ -2144,7 +2035,6 @@
                 timestamp: serverTimestamp()
             };
 
-            // Если это ответ на другое сообщение
             if (window.replyTo) {
                 messageData.replyTo = window.replyTo.id;
                 messageData.replyToPreview = window.replyTo.preview;
@@ -2156,11 +2046,9 @@
                 await addDoc(collection(db, `chats/${chatId}/messages`), messageData);
                 input.value = '';
 
-                // Сбрасываем индикатор печати
                 if (window.typingTimeout) clearTimeout(window.typingTimeout);
                 await deleteDoc(doc(db, "status", window.currentUser.uid + '_typing')).catch(() => {});
 
-                // Обновляем список контактов
                 loadContacts();
             } catch (error) {
                 console.error('Ошибка отправки сообщения:', error);
@@ -2199,9 +2087,7 @@
         // РЕАКЦИИ
         // ================================================================
         window.openReactionPicker = function(messageId) {
-            // Закрываем все открытые пикеры
             document.querySelectorAll('.reaction-picker').forEach(picker => picker.classList.remove('show'));
-            // Открываем нужный
             const picker = document.getElementById('rp-' + messageId);
             if (picker) picker.classList.toggle('show');
         };
@@ -2212,7 +2098,6 @@
             const reactionRef = doc(collection(db, `chats/${chatId}/messages/${messageId}/reactions`),
                 window.currentUser.uid + '_' + emoji);
 
-            // Проверяем, есть ли уже такая реакция от этого пользователя
             const existingSnapshot = await getDocs(query(
                 collection(db, `chats/${chatId}/messages/${messageId}/reactions`),
                 where("uid", "==", window.currentUser.uid),
@@ -2220,18 +2105,15 @@
             ));
 
             if (existingSnapshot.empty) {
-                // Добавляем реакцию
                 await setDoc(reactionRef, {
                     uid: window.currentUser.uid,
                     emoji: emoji,
                     timestamp: serverTimestamp()
                 });
             } else {
-                // Убираем реакцию (переключение)
                 await deleteDoc(existingSnapshot.docs[0].ref);
             }
 
-            // Закрываем все пикеры
             document.querySelectorAll('.reaction-picker').forEach(picker => picker.classList.remove('show'));
         };
 
@@ -2304,7 +2186,7 @@
                 }
             });
 
-            // Групповые чаты, в которых состоит пользователь
+            // Групповые чаты
             const groupsSnapshot = await getDocs(query(collection(db, "chats"), where("isGroup", "==", true)));
             const groups = [];
 
@@ -2318,7 +2200,6 @@
 
             let listHTML = '';
 
-            // Групповые чаты
             groups.forEach(group => {
                 listHTML += `
                     <div class="contact-item" onclick="startGroupChat('${group.groupId}', '${escapeHtml(group.name || 'Группа')}')">
@@ -2331,7 +2212,6 @@
                     </div>`;
             });
 
-            // Личные чаты
             contacts.forEach(contact => {
                 listHTML += `
                     <div class="contact-item" onclick="startChat('${contact.uid}', '${escapeHtml(contact.nickname || contact.email?.split('@')[0])}', '${escapeHtml(contact.email)}')">
@@ -2348,7 +2228,6 @@
 
             container.innerHTML = listHTML || '<div class="no-contacts">🔍 Используйте поиск,<br>чтобы найти собеседников</div>';
 
-            // Обновляем точки онлайн для всех контактов
             updateOnlineDots();
         }
 
@@ -2374,7 +2253,7 @@
         };
 
         // ================================================================
-        // ИНФОРМАЦИЯ О ЧАТЕ / ПОЛЬЗОВАТЕЛЕ (С РОЛЯМИ И УПРАВЛЕНИЕМ ГРУППОЙ)
+        // ИНФОРМАЦИЯ О ЧАТЕ / ПОЛЬЗОВАТЕЛЕ
         // ================================================================
         window.openChatInfoModal = async function() {
             if (!window.currentChat) return;
@@ -2405,7 +2284,6 @@
                     </p>`;
                 });
 
-                // Кнопки управления группой для создателя
                 if (isCreator) {
                     membersHTML += `
                         <hr style="margin:12px 0;border-color:var(--border);">
@@ -2441,7 +2319,6 @@
                 await updateDoc(doc(db, `chats/${window.currentChat.groupId}/members`, memberId), {
                     role: newRole
                 });
-                // Обновляем информацию о чате
                 openChatInfoModal();
             } catch (error) {
                 console.error('Ошибка изменения роли:', error);
@@ -2453,15 +2330,19 @@
         // УДАЛЕНИЕ ГРУППЫ (ТОЛЬКО ДЛЯ СОЗДАТЕЛЯ)
         // ================================================================
         window.deleteGroupChat = async function(groupId) {
+            const groupDoc = await getDoc(doc(db, "chats", groupId));
+            if (!groupDoc.exists() || groupDoc.data().createdBy !== window.currentUser?.uid) {
+                alert('Только создатель группы может её удалить.');
+                return;
+            }
+
             if (!confirm('Вы уверены, что хотите удалить эту группу? Это действие нельзя отменить.')) return;
 
             try {
-                // Удаляем всех участников
                 const membersSnapshot = await getDocs(collection(db, `chats/${groupId}/members`));
                 const batch = writeBatch(db);
                 membersSnapshot.forEach(docSnap => batch.delete(docSnap.ref));
 
-                // Удаляем все сообщения и реакции
                 const messagesSnapshot = await getDocs(collection(db, `chats/${groupId}/messages`));
                 for (const msgDoc of messagesSnapshot.docs) {
                     const reactionsSnapshot = await getDocs(collection(db, `chats/${groupId}/messages/${msgDoc.id}/reactions`));
@@ -2469,7 +2350,6 @@
                     batch.delete(msgDoc.ref);
                 }
 
-                // Удаляем сам документ чата
                 batch.delete(doc(db, "chats", groupId));
                 await batch.commit();
 
@@ -2492,7 +2372,6 @@
             document.getElementById('settings-nickname').value = window.currentUser.displayName || '';
             document.getElementById('settings-email').value = window.currentUser.email || '';
 
-            // Загружаем данные пользователя из Firestore
             const userSnapshot = await getDocs(query(collection(db, "users"), where("__name__", "==", window.currentUser.uid)));
             const userData = userSnapshot.empty ? {} : userSnapshot.docs[0].data();
 
@@ -2543,10 +2422,8 @@
             }
 
             try {
-                // Обновляем профиль в Firebase Auth
                 await updateProfile(auth.currentUser, { displayName: newNickname });
 
-                // Обновляем данные в Firestore
                 await setDoc(doc(db, "users", window.currentUser.uid), {
                     nickname: newNickname,
                     bio: newBio,
@@ -2562,7 +2439,6 @@
             }
         };
 
-        // Обновление превью аватарки при вводе нового ника
         document.addEventListener('DOMContentLoaded', function() {
             const nicknameInput = document.getElementById('settings-nickname');
             if (nicknameInput) {
@@ -2573,7 +2449,6 @@
                 });
             }
 
-            // Закрытие модалок по Escape
             document.addEventListener('keydown', function(event) {
                 if (event.key === 'Escape') {
                     closeSearchModal();
@@ -2585,7 +2460,6 @@
                 }
             });
 
-            // Закрытие модалок по клику на оверлей
             document.querySelectorAll('.modal-overlay').forEach(overlay => {
                 overlay.addEventListener('click', function(event) {
                     if (event.target === overlay) {
@@ -2608,26 +2482,24 @@
             window.currentUser = user;
 
             if (user) {
-                // Пользователь вошёл — показываем интерфейс чатов
                 document.getElementById('auth-screen').style.display = 'none';
                 document.getElementById('main-container').style.display = 'flex';
 
-                // Обновляем/создаём документ пользователя в Firestore
                 await setDoc(doc(db, "users", user.uid), {
                     nickname: user.displayName || user.email?.split('@')[0] || 'Пользователь',
                     email: user.email,
                     updatedAt: serverTimestamp()
                 }, { merge: true });
 
-                // Устанавливаем статус онлайн
                 await setOnlineStatus(true);
-
-                // Загружаем список контактов
                 loadContacts();
 
-                // Следим за статусами всех пользователей
-                onSnapshot(collection(db, "status"), (snapshot) => {
-                    // Обновляем статус в шапке чата
+                if (window.statusUnsubscribe) {
+                    window.statusUnsubscribe();
+                    window.statusUnsubscribe = null;
+                }
+
+                window.statusUnsubscribe = onSnapshot(collection(db, "status"), (snapshot) => {
                     if (window.currentChat && !window.currentChat.isGroup && window.currentChat.uid) {
                         snapshot.forEach(docSnap => {
                             if (docSnap.id === window.currentChat.uid) {
@@ -2635,20 +2507,22 @@
                             }
                         });
                     }
-                    // Обновляем точки онлайн в списке контактов
                     updateOnlineDots();
                 });
 
-                // Устанавливаем офлайн при закрытии вкладки
                 window.addEventListener('beforeunload', () => {
                     setOnlineStatus(false);
                 });
 
             } else {
-                // Пользователь вышел — показываем экран авторизации
                 document.getElementById('auth-screen').style.display = 'block';
                 document.getElementById('main-container').style.display = 'none';
                 document.getElementById('error-msg').classList.remove('show');
+
+                if (window.statusUnsubscribe) {
+                    window.statusUnsubscribe();
+                    window.statusUnsubscribe = null;
+                }
             }
         });
 
