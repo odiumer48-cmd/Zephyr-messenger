@@ -2019,41 +2019,40 @@
         // ================================================================
         // ОТПРАВКА СООБЩЕНИЙ
         // ================================================================
-        window.sendMessage = async function() {
-            const input = document.getElementById('message-input');
-            const text = input.value.trim();
+window.sendMessage = async function() {
+    const input = document.getElementById('message-input');
+    const text = input.value.trim();
 
-            if (!text || !window.currentChat || !window.currentUser) return;
+    if (!text || !window.currentChat || !window.currentUser) return;
 
-            const chatId = getChatId();
-            const messageData = {
-                text: text,
-                uid: window.currentUser.uid,
-                nickname: window.currentUser.displayName || window.currentUser.email?.split('@')[0] || 'Аноним',
-                email: window.currentUser.email,
-                timestamp: serverTimestamp()
-            };
+    const chatId = getChatId();
+    const messageData = {
+        text: text,
+        uid: window.currentUser.uid,
+        nickname: window.currentUser.displayName || window.currentUser.email?.split('@')[0] || 'Аноним',
+        email: window.currentUser.email,
+        timestamp: serverTimestamp()
+    };
 
-            if (window.replyTo) {
-                messageData.replyTo = window.replyTo.id;
-                messageData.replyToPreview = window.replyTo.preview;
-                window.replyTo = null;
-                document.getElementById('reply-bar').classList.remove('show');
-            }
+    if (window.replyTo) {
+        messageData.replyTo = window.replyTo.id;
+        messageData.replyToPreview = window.replyTo.preview;
+        window.replyTo = null;
+        document.getElementById('reply-bar').classList.remove('show');
+    }
 
-            try {
-                await addDoc(collection(db, `chats/${chatId}/messages`), messageData);
-                input.value = '';
+    try {
+        await addDoc(collection(db, `chats/${chatId}/messages`), messageData);
+        input.value = '';
 
-                if (window.typingTimeout) clearTimeout(window.typingTimeout);
-                await deleteDoc(doc(db, "status", window.currentUser.uid + '_typing')).catch(() => {});
+        if (window.typingTimeout) clearTimeout(window.typingTimeout);
+        await deleteDoc(doc(db, "status", window.currentUser.uid + '_typing')).catch(() => {});
 
-                loadContacts();
-            } catch (error) {
-                console.error('Ошибка отправки сообщения:', error);
-            }
-        };
-
+        loadContacts(); // ← Вот правильная строка
+    } catch (error) {
+        console.error('Ошибка отправки сообщения:', error);
+    }
+};
         // ================================================================
         // ОТВЕТ НА СООБЩЕНИЕ (РЕПЛАЙ)
         // ================================================================
