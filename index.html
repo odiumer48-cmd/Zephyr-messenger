@@ -367,14 +367,14 @@
         /* ================================================================
            ОСНОВНАЯ ОБЛАСТЬ ЧАТА
            ================================================================ */
-        .chat-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-width: 0;
-            background: var(--surface);
-        }
-
+.chat-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: var(--surface);
+    min-height: 0; /* ← добавьте */
+}
         .chat-header {
             padding: 14px 18px;
             border-bottom: 1px solid var(--border);
@@ -450,18 +450,17 @@
             display: none;
         }
 
-        .messages-container {
-            flex: 1;
-            padding: 16px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            background: var(--sidebar-bg);
-            -webkit-overflow-scrolling: touch;
-            /* ИСПРАВЛЕНИЕ: контейнер не сжимается меньше своего содержимого */
-            min-height: 0;
-        }
+.messages-container {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: var(--sidebar-bg);
+    -webkit-overflow-scrolling: touch;
+    min-height: 0; /* ← обязательно */
+}
 
         .message-wrapper {
             position: relative;
