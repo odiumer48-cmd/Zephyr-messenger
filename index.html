@@ -373,7 +373,7 @@
     flex-direction: column;
     min-width: 0;
     background: var(--surface);
-    min-height: 0; /* ← добавьте */
+    min-height: 0;            /* ← добавьте эту строку */
 }
         .chat-header {
             padding: 14px 18px;
@@ -459,9 +459,9 @@
     gap: 6px;
     background: var(--sidebar-bg);
     -webkit-overflow-scrolling: touch;
-    min-height: 0; /* ← обязательно */
+    min-height: 0; /* ← обязательно для корректной прокрутки */
 }
-
+        
         .message-wrapper {
             position: relative;
             max-width: 80%;
