@@ -144,25 +144,17 @@
             box-sizing: border-box;
         }
 
-        body {
-            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-            background: var(--bg);
-            min-height: 100vh;
-            min-height: 100dvh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 10px;
-            transition: background var(--transition);
-            -webkit-tap-highlight-color: transparent;
-            -webkit-font-smoothing: antialiased;
-        }
-
+ body {
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    margin: 0;
+    height: 100vh;
+}
         /* ---------- ОСНОВНОЙ КОНТЕЙНЕР ---------- */
         .container {
             width: 100%;
             max-width: 900px;
-            height: 95vh;
+            height: 100vh;
             height: 95dvh;
             background: var(--surface);
             border-radius: var(--radius);
