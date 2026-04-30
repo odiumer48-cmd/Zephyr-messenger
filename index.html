@@ -2537,6 +2537,22 @@ async function loadContacts() {
             const days = Math.floor(hours / 24);
             return days + ' дн. назад';
         }
+        async function updateOnlineDots() {
+    try {
+        const statusSnapshot = await getDocs(collection(db, "status"));
+        statusSnapshot.forEach(docSnap => {
+            const uid = docSnap.id;
+            if (uid.endsWith('_typing')) return;
+            const dotElement = document.getElementById('dot-' + uid);
+            if (dotElement) {
+                const statusData = docSnap.data();
+                dotElement.className = 'online-dot ' + (statusData.online ? 'online' : 'offline');
+            }
+        });
+    } catch (error) {
+        console.warn('Не удалось обновить точки онлайна:', error);
+    }
+}
     </script>
 </body>
 </html>
