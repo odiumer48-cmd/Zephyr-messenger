@@ -151,20 +151,13 @@
     height: 100vh;
 }
         /* ---------- ОСНОВНОЙ КОНТЕЙНЕР ---------- */
-        .container {
-            width: 100%;
-            max-width: 900px;
-            height: 100vh;
-            height: 95dvh;
-            background: var(--surface);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            display: flex;
-            overflow: hidden;
-            transition: all var(--transition);
-            position: relative;
-        }
-
+.container {
+    width: 100%;
+    max-width: 900px;
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
+}
         /* ================================================================
            БОКОВАЯ ПАНЕЛЬ (СПИСОК ЧАТОВ)
            ================================================================ */
@@ -365,7 +358,13 @@
     flex-direction: column;
     min-width: 0;
     background: var(--surface);
-    min-height: 0;            /* ← добавьте эту строку */
+    min-height: 0;
+}
+
+#chat-screen {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
 }
         .chat-header {
             padding: 14px 18px;
@@ -1141,7 +1140,7 @@
             </div>
 
             <!-- АКТИВНЫЙ ЧАТ (СКРЫТ, ПОКА НЕ ВЫБРАН) -->
-            <div id="chat-screen" style="display:none; flex:1; flex-direction:column;">
+<div id="chat-screen" style="display:none; flex:1; flex-direction:column; min-height:0;">
                 <div class="chat-header">
                     <!-- Кнопка "Назад" (видна только на мобильных) -->
                     <button class="mobile-back-btn" onclick="goBackToChatList()" title="Назад к чатам">←</button>
