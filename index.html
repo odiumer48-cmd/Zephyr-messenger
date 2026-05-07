@@ -1554,9 +1554,9 @@
         }
 
         async function getUserStatus(uid) {
-            const snapshot = await getDocs(query(collection(db, "status"), where("__name__", "==", uid)));
-            if (!snapshot.empty) {
-                return snapshot.docs[0].data();
+            const snap = await getDoc(doc(db, "status", uid));
+            if (snap.exists()) {
+                return snap.data();
             }
             return { online: false, lastSeen: null };
         }
@@ -1613,16 +1613,19 @@
                 return;
             }
 
-            const usersSnapshot = await getDocs(collection(db, "users"));
+            const usersQuery = query(
+                collection(db, "users"),
+                where("nickname", ">=", searchText),
+                where("nickname", "<=", searchText + '\uf8ff'),
+                limit(20)
+            );
+            const usersSnapshot = await getDocs(usersQuery);
             const results = [];
 
             usersSnapshot.forEach(docSnap => {
-                const userData = docSnap.data();
                 if (docSnap.id === window.currentUser?.uid) return;
-                const userNickname = (userData.nickname || '').toLowerCase();
-                if (userNickname.includes(searchText)) {
-                    results.push({ uid: docSnap.id, ...userData });
-                }
+                const userData = docSnap.data();
+                results.push({ uid: docSnap.id, ...userData });
             });
 
             if (results.length === 0) {
@@ -1660,33 +1663,51 @@
             document.getElementById('group-member-results').innerHTML = '';
             window.selectedGroupMembers = [];
             renderSelectedMembers();
-            const usersSnapshot = await getDocs(collection(db, "users"));
             window.allUsersCache = [];
-            usersSnapshot.forEach(docSnap => {
-                if (docSnap.id !== window.currentUser?.uid) {
-                    window.allUsersCache.push({ uid: docSnap.id, ...docSnap.data() });
-                }
-            });
         };
 
         window.closeCreateGroupModal = function() {
             document.getElementById('create-group-modal').classList.remove('show');
         };
 
-        window.searchGroupMembers = function() {
-            const searchQuery = document.getElementById('group-member-search').value.toLowerCase();
+        window.searchGroupMembers = async function() {
+            const searchQuery = document.getElementById('group-member-search').value.trim().toLowerCase();
             const resultsDiv = document.getElementById('group-member-results');
-            const filtered = window.allUsersCache.filter(user => {
-                const userNickname = (user.nickname || '').toLowerCase();
-                const alreadySelected = window.selectedGroupMembers.find(member => member.uid === user.uid);
-                return userNickname.includes(searchQuery) && !alreadySelected;
+
+            if (!searchQuery || searchQuery.length < 2) {
+                resultsDiv.innerHTML = '';
+                return;
+            }
+
+            const usersQuery = query(
+                collection(db, "users"),
+                where("nickname", ">=", searchQuery),
+                where("nickname", "<=", searchQuery + '\uf8ff'),
+                limit(20)
+            );
+            const usersSnapshot = await getDocs(usersQuery);
+            window.allUsersCache = [];
+            usersSnapshot.forEach(docSnap => {
+                if (docSnap.id !== window.currentUser?.uid) {
+                    window.allUsersCache.push({ uid: docSnap.id, ...docSnap.data() });
+                }
             });
-            resultsDiv.innerHTML = filtered.map(user => `
-                <div class="search-result-item" onclick="addGroupMember('${user.uid}', '${escapeHtml(user.nickname || user.email?.split('@')[0])}')">
-                    <img src="${getAvatarUrl(user.nickname || user.email, user.avatarStyle)}" width="32" height="32" style="border-radius:50%;">
-                    <span>${escapeHtml(user.nickname || user.email?.split('@')[0])}</span>
-                </div>
-            `).join('');
+
+            const filtered = window.allUsersCache.filter(user => {
+                const alreadySelected = window.selectedGroupMembers.find(member => member.uid === user.uid);
+                return !alreadySelected;
+            });
+
+            if (filtered.length === 0) {
+                resultsDiv.innerHTML = '<p style="color:var(--text-secondary);padding:8px;">Никого не найдено</p>';
+            } else {
+                resultsDiv.innerHTML = filtered.map(user => `
+                    <div class="search-result-item" onclick="addGroupMember('${user.uid}', '${escapeHtml(user.nickname || user.email?.split('@')[0])}')">
+                        <img src="${getAvatarUrl(user.nickname || user.email, user.avatarStyle)}" width="32" height="32" style="border-radius:50%;">
+                        <span>${escapeHtml(user.nickname || user.email?.split('@')[0])}</span>
+                    </div>
+                `).join('');
+            }
         };
 
         window.addGroupMember = function(uid, name) {
@@ -1713,46 +1734,46 @@
             `).join('');
         }
 
-window.createGroupChat = async function() {
-    const groupName = document.getElementById('group-name').value.trim() || 'Новая группа';
-    const memberIds = [window.currentUser.uid, ...window.selectedGroupMembers.map(m => m.uid)];
+        window.createGroupChat = async function() {
+            const groupName = document.getElementById('group-name').value.trim() || 'Новая группа';
+            const memberIds = [window.currentUser.uid, ...window.selectedGroupMembers.map(m => m.uid)];
 
-    const chatRef = doc(collection(db, "chats"));
-    const chatId = chatRef.id;
+            const chatRef = doc(collection(db, "chats"));
+            const chatId = chatRef.id;
 
-    await setDoc(chatRef, {
-        name: groupName,
-        isGroup: true,
-        createdBy: window.currentUser.uid,
-        createdAt: serverTimestamp()
-    });
+            await setDoc(chatRef, {
+                name: groupName,
+                isGroup: true,
+                createdBy: window.currentUser.uid,
+                createdAt: serverTimestamp()
+            });
 
-    const batch = writeBatch(db);
-    memberIds.forEach(uid => {
-        const role = uid === window.currentUser.uid ? 'creator' : 'member';
-        batch.set(doc(collection(db, `chats/${chatId}/members`), uid), {
-            uid: uid,
-            role: role,
-            joinedAt: serverTimestamp()
-        });
-        // Добавляем группу в список чатов каждого участника
-        batch.set(doc(db, `userChats/${uid}/chats`, chatId), {
-            chatId: chatId,
-            name: groupName,
-            avatarUrl: getAvatarUrl(groupName),
-            isGroup: true,
-            otherUserId: null,
-            lastMessage: '',
-            lastMessageTime: serverTimestamp(),
-            unreadCount: 0,
-            updatedAt: serverTimestamp()
-        });
-    });
-    await batch.commit();
+            const batch = writeBatch(db);
+            memberIds.forEach(uid => {
+                const role = uid === window.currentUser.uid ? 'creator' : 'member';
+                batch.set(doc(collection(db, `chats/${chatId}/members`), uid), {
+                    uid: uid,
+                    role: role,
+                    joinedAt: serverTimestamp()
+                });
+                batch.set(doc(db, `userChats/${uid}/chats`, chatId), {
+                    chatId: chatId,
+                    name: groupName,
+                    avatarUrl: getAvatarUrl(groupName),
+                    isGroup: true,
+                    otherUserId: null,
+                    lastMessage: '',
+                    lastMessageTime: serverTimestamp(),
+                    unreadCount: 0,
+                    updatedAt: serverTimestamp()
+                });
+            });
+            await batch.commit();
 
-    document.getElementById('create-group-modal').classList.remove('show');
-    startGroupChat(chatId, groupName);
-};
+            document.getElementById('create-group-modal').classList.remove('show');
+            startGroupChat(chatId, groupName);
+        };
+
         // ================================================================
         // ПОЛУЧЕНИЕ РОЛИ ПОЛЬЗОВАТЕЛЯ В ГРУППЕ
         // ================================================================
@@ -1779,123 +1800,131 @@ window.createGroupChat = async function() {
             return messageUid === window.currentUser.uid;
         }
 
-  // ================================================================
-// УПРАВЛЕНИЕ ЧАТАМИ
-// ================================================================
-function getChatId() {
-    if (!window.currentChat || !window.currentUser) return null;
-    if (window.currentChat.groupId) return window.currentChat.groupId;
-    return [window.currentUser.uid, window.currentChat.uid].sort().join('_');
-}
-
-// ИСПРАВЛЕНО: теперь создаёт userChats при первом открытии
-window.startChat = async function(uid, nickname, email) {
-    if (!window.currentUser) return;
-    const chatId = [window.currentUser.uid, uid].sort().join('_');
-
-    const myChatRef = doc(db, `userChats/${window.currentUser.uid}/chats`, chatId);
-    const myChatSnap = await getDoc(myChatRef);
-
-    if (!myChatSnap.exists()) {
-        const myName = window.currentUser.displayName || window.currentUser.email?.split('@')[0] || 'Пользователь';
-        const otherName = nickname || email?.split('@')[0] || 'Пользователь';
-
-        await setDoc(myChatRef, {
-            chatId: chatId,
-            name: otherName,
-            avatarUrl: getAvatarUrl(nickname || email),
-            isGroup: false,
-            otherUserId: uid,
-            lastMessage: '',
-            lastMessageTime: serverTimestamp(),
-            unreadCount: 0,
-            updatedAt: serverTimestamp()
-        });
-
-        const otherRef = doc(db, `userChats/${uid}/chats`, chatId);
-        const otherSnap = await getDoc(otherRef);
-        if (!otherSnap.exists()) {
-            await setDoc(otherRef, {
-                chatId: chatId,
-                name: myName,
-                avatarUrl: getAvatarUrl(myName),
-                isGroup: false,
-                otherUserId: window.currentUser.uid,
-                lastMessage: '',
-                lastMessageTime: serverTimestamp(),
-                unreadCount: 0,
-                updatedAt: serverTimestamp()
-            });
+        // ================================================================
+        // УПРАВЛЕНИЕ ЧАТАМИ
+        // ================================================================
+        function getChatId() {
+            if (!window.currentChat || !window.currentUser) return null;
+            if (window.currentChat.groupId) return window.currentChat.groupId;
+            return [window.currentUser.uid, window.currentChat.uid].sort().join('_');
         }
-    }
 
-    window.currentChat = { uid, nickname, email, isGroup: false, groupId: null };
-    window.replyTo = null;
-    openChatScreen(nickname || email?.split('@')[0] || 'Пользователь', getAvatarUrl(nickname || email), false);
-};
+        window.startChat = async function(uid, nickname, email) {
+            if (!window.currentUser) return;
+            const chatId = [window.currentUser.uid, uid].sort().join('_');
 
-function startGroupChat(groupId, groupName) {
-    window.currentChat = { uid: null, nickname: null, email: null, isGroup: true, groupId, name: groupName };
-    window.replyTo = null;
-    openChatScreen(groupName || 'Группа', getAvatarUrl(groupName || 'Группа'), true);
-}
-window.startGroupChat = startGroupChat;
+            const myChatRef = doc(db, `userChats/${window.currentUser.uid}/chats`, chatId);
+            const myChatSnap = await getDoc(myChatRef);
 
-async function openChatScreen(displayName, avatarUrl, isGroupChat) {
-    document.getElementById('welcome-screen').style.display = 'none';
-    document.getElementById('chat-screen').style.display = 'flex';
-    document.getElementById('chat-user-name').textContent = displayName;
-    document.getElementById('chat-avatar-img').src = avatarUrl;
-    document.getElementById('reply-bar').classList.remove('show');
-    document.getElementById('typing-indicator').style.display = 'none';
+            if (!myChatSnap.exists()) {
+                const myName = window.currentUser.displayName || window.currentUser.email?.split('@')[0] || 'Пользователь';
+                const otherName = nickname || email?.split('@')[0] || 'Пользователь';
 
-    const chatId = getChatId();
+                await setDoc(myChatRef, {
+                    chatId: chatId,
+                    name: otherName,
+                    avatarUrl: getAvatarUrl(nickname || email),
+                    isGroup: false,
+                    otherUserId: uid,
+                    lastMessage: '',
+                    lastMessageTime: serverTimestamp(),
+                    unreadCount: 0,
+                    updatedAt: serverTimestamp()
+                });
 
-    if (isGroupChat) {
-        document.getElementById('chat-user-status').textContent = 'группа';
-        document.getElementById('chat-user-status').className = 'chat-user-status';
-    } else {
-        const statusData = await getUserStatus(window.currentChat.uid);
-        updateChatHeaderStatus(statusData);
-    }
+                const otherRef = doc(db, `userChats/${uid}/chats`, chatId);
+                const otherSnap = await getDoc(otherRef);
+                if (!otherSnap.exists()) {
+                    await setDoc(otherRef, {
+                        chatId: chatId,
+                        name: myName,
+                        avatarUrl: getAvatarUrl(myName),
+                        isGroup: false,
+                        otherUserId: window.currentUser.uid,
+                        lastMessage: '',
+                        lastMessageTime: serverTimestamp(),
+                        unreadCount: 0,
+                        updatedAt: serverTimestamp()
+                    });
+                }
+            }
 
-    document.getElementById('main-container').classList.add('chat-open');
-    watchTypingStatus(chatId);
-    loadMessages();
-    loadContacts();
-}
+            window.currentChat = { uid, nickname, email, isGroup: false, groupId: null };
+            window.replyTo = null;
+            openChatScreen(nickname || email?.split('@')[0] || 'Пользователь', getAvatarUrl(nickname || email), false);
+        };
 
-function updateChatHeaderStatus(statusData) {
-    const statusElement = document.getElementById('chat-user-status');
-    if (statusData.online) {
-        statusElement.textContent = 'в сети';
-        statusElement.className = 'chat-user-status online';
-    } else {
-        const lastSeenDate = statusData.lastSeen?.toDate();
-        if (lastSeenDate) {
-            statusElement.textContent = 'был(а) ' + timeAgo(lastSeenDate);
-        } else {
-            statusElement.textContent = 'не в сети';
+        function startGroupChat(groupId, groupName) {
+            window.currentChat = {
+                uid: null,
+                nickname: null,
+                email: null,
+                isGroup: true,
+                groupId: groupId,
+                name: groupName
+            };
+            window.replyTo = null;
+            openChatScreen(groupName || 'Группа', getAvatarUrl(groupName || 'Группа'), true);
         }
-        statusElement.className = 'chat-user-status offline';
-    }
-}
+        window.startGroupChat = startGroupChat;
 
-window.goBackToChatList = function() {
-    document.getElementById('main-container').classList.remove('chat-open');
-    window.currentChat = null;
-    document.getElementById('chat-screen').style.display = 'none';
-    document.getElementById('welcome-screen').style.display = 'block';
+        async function openChatScreen(displayName, avatarUrl, isGroupChat) {
+            document.getElementById('welcome-screen').style.display = 'none';
+            document.getElementById('chat-screen').style.display = 'flex';
+            document.getElementById('chat-user-name').textContent = displayName;
+            document.getElementById('chat-avatar-img').src = avatarUrl;
+            document.getElementById('reply-bar').classList.remove('show');
+            document.getElementById('typing-indicator').style.display = 'none';
 
-    if (window.currentMessagesUnsubscribe) {
-        window.currentMessagesUnsubscribe();
-        window.currentMessagesUnsubscribe = null;
-    }
-    if (window.currentTypingUnsubscribe) {
-        window.currentTypingUnsubscribe();
-        window.currentTypingUnsubscribe = null;
-    }
-};
+            const chatId = getChatId();
+
+            if (isGroupChat) {
+                document.getElementById('chat-user-status').textContent = 'группа';
+                document.getElementById('chat-user-status').className = 'chat-user-status';
+            } else {
+                const statusData = await getUserStatus(window.currentChat.uid);
+                updateChatHeaderStatus(statusData);
+            }
+
+            document.getElementById('main-container').classList.add('chat-open');
+
+            watchTypingStatus(chatId);
+            loadMessages();
+            loadContacts();
+        }
+
+        function updateChatHeaderStatus(statusData) {
+            const statusElement = document.getElementById('chat-user-status');
+            if (statusData.online) {
+                statusElement.textContent = 'в сети';
+                statusElement.className = 'chat-user-status online';
+            } else {
+                const lastSeenDate = statusData.lastSeen?.toDate();
+                if (lastSeenDate) {
+                    statusElement.textContent = 'был(а) ' + timeAgo(lastSeenDate);
+                } else {
+                    statusElement.textContent = 'не в сети';
+                }
+                statusElement.className = 'chat-user-status offline';
+            }
+        }
+
+        window.goBackToChatList = function() {
+            document.getElementById('main-container').classList.remove('chat-open');
+            window.currentChat = null;
+            document.getElementById('chat-screen').style.display = 'none';
+            document.getElementById('welcome-screen').style.display = 'block';
+
+            if (window.currentMessagesUnsubscribe) {
+                window.currentMessagesUnsubscribe();
+                window.currentMessagesUnsubscribe = null;
+            }
+            if (window.currentTypingUnsubscribe) {
+                window.currentTypingUnsubscribe();
+                window.currentTypingUnsubscribe = null;
+            }
+        };
+
         // ================================================================
         // ЗАГРУЗКА И ОТОБРАЖЕНИЕ СООБЩЕНИЙ
         // ================================================================
@@ -2078,7 +2107,33 @@ window.sendMessage = async function() {
         if (window.typingTimeout) clearTimeout(window.typingTimeout);
         await deleteDoc(doc(db, "status", window.currentUser.uid + '_typing')).catch(() => {});
 
-        loadContacts(); // ← Вот правильная строка
+        const preview = text.substring(0, 100);
+        if (window.currentChat.isGroup) {
+            const membersSnap = await getDocs(collection(db, `chats/${chatId}/members`));
+            const batch = writeBatch(db);
+            membersSnap.forEach(m => {
+                batch.update(doc(db, `userChats/${m.id}/chats`, chatId), {
+                    lastMessage: preview,
+                    lastMessageTime: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                });
+            });
+            await batch.commit();
+        } else {
+            const otherUid = window.currentChat.uid;
+            const batch = writeBatch(db);
+            batch.update(doc(db, `userChats/${window.currentUser.uid}/chats`, chatId), {
+                lastMessage: preview,
+                lastMessageTime: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            });
+            batch.update(doc(db, `userChats/${otherUid}/chats`, chatId), {
+                lastMessage: preview,
+                lastMessageTime: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            });
+            await batch.commit();
+        }
     } catch (error) {
         console.error('Ошибка отправки сообщения:', error);
     }
@@ -2210,19 +2265,16 @@ async function loadContacts() {
             collection(db, `userChats/${window.currentUser.uid}/chats`),
             orderBy("lastMessageTime", "desc")
         );
-        
         const userChatsSnapshot = await getDocs(userChatsQuery);
-        
+
         if (userChatsSnapshot.empty) {
             container.innerHTML = '<div class="no-contacts">🔍 Используйте поиск,<br>чтобы найти собеседников</div>';
             return;
         }
 
         let listHTML = '';
-        
         userChatsSnapshot.forEach(docSnap => {
             const chat = docSnap.data();
-            
             if (chat.isGroup) {
                 listHTML += `
                     <div class="contact-item" onclick="startGroupChat('${chat.chatId}', '${escapeHtml(chat.name || 'Группа')}')">
@@ -2251,49 +2303,6 @@ async function loadContacts() {
 
         container.innerHTML = listHTML;
         updateOnlineDots();
-
-    } catch (error) {
-        console.error('Ошибка загрузки контактов:', error);
-        container.innerHTML = '<div class="no-contacts">Ошибка загрузки контактов.</div>';
-    }
-}
-        // Группы
-        groups.forEach(group => {
-            listHTML += `
-                <div class="contact-item" onclick="startGroupChat('${group.groupId}', '${escapeHtml(group.name || 'Группа')}')">
-                    <div class="avatar">
-                        <img src="${getAvatarUrl(group.name || 'Группа')}" width="44" height="44" alt="">
-                    </div>
-                    <div class="contact-info">
-                        <div class="contact-name">👥 ${escapeHtml(group.name || 'Группа')}</div>
-                    </div>
-                </div>`;
-        });
-
-        // Пользователи
-        contacts.forEach(contact => {
-            listHTML += `
-                <div class="contact-item" onclick="startChat('${contact.uid}', '${escapeHtml(contact.nickname || contact.email?.split('@')[0])}', '${escapeHtml(contact.email)}')">
-                    <div class="avatar">
-                        <img src="${getAvatarUrl(contact.nickname || contact.email, contact.avatarStyle)}" width="44" height="44" alt="">
-                        <div class="online-dot offline" id="dot-${contact.uid}"></div>
-                    </div>
-                    <div class="contact-info">
-                        <div class="contact-name">${escapeHtml(contact.nickname || contact.email?.split('@')[0])}</div>
-                        <div class="contact-lastmsg">${escapeHtml(contact.bio || '')}</div>
-                    </div>
-                </div>`;
-        });
-
-        container.innerHTML = listHTML || '<div class="no-contacts">🔍 Используйте поиск,<br>чтобы найти собеседников</div>';
-
-        // Безопасно обновляем точки онлайна
-        try {
-            await updateOnlineDots();
-        } catch (e) {
-            // ничего не делаем, точки просто останутся серыми
-        }
-
     } catch (error) {
         console.error('Ошибка загрузки контактов:', error);
         container.innerHTML = '<div class="no-contacts">Ошибка загрузки контактов.</div>';
