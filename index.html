@@ -1554,9 +1554,9 @@
         }
 
         async function getUserStatus(uid) {
-            const snap = await getDoc(doc(db, "status", uid));
-            if (snap.exists()) {
-                return snap.data();
+            const snapshot = await getDocs(query(collection(db, "status"), where("__name__", "==", uid)));
+            if (!snapshot.empty) {
+                return snapshot.docs[0].data();
             }
             return { online: false, lastSeen: null };
         }
@@ -1613,19 +1613,16 @@
                 return;
             }
 
-            const usersQuery = query(
-                collection(db, "users"),
-                where("nickname", ">=", searchText),
-                where("nickname", "<=", searchText + '\uf8ff'),
-                limit(20)
-            );
-            const usersSnapshot = await getDocs(usersQuery);
+            const usersSnapshot = await getDocs(collection(db, "users"));
             const results = [];
 
             usersSnapshot.forEach(docSnap => {
-                if (docSnap.id === window.currentUser?.uid) return;
                 const userData = docSnap.data();
-                results.push({ uid: docSnap.id, ...userData });
+                if (docSnap.id === window.currentUser?.uid) return;
+                const userNickname = (userData.nickname || '').toLowerCase();
+                if (userNickname.includes(searchText)) {
+                    results.push({ uid: docSnap.id, ...userData });
+                }
             });
 
             if (results.length === 0) {
@@ -1663,51 +1660,33 @@
             document.getElementById('group-member-results').innerHTML = '';
             window.selectedGroupMembers = [];
             renderSelectedMembers();
-            window.allUsersCache = [];
-        };
-
-        window.closeCreateGroupModal = function() {
-            document.getElementById('create-group-modal').classList.remove('show');
-        };
-
-        window.searchGroupMembers = async function() {
-            const searchQuery = document.getElementById('group-member-search').value.trim().toLowerCase();
-            const resultsDiv = document.getElementById('group-member-results');
-
-            if (!searchQuery || searchQuery.length < 2) {
-                resultsDiv.innerHTML = '';
-                return;
-            }
-
-            const usersQuery = query(
-                collection(db, "users"),
-                where("nickname", ">=", searchQuery),
-                where("nickname", "<=", searchQuery + '\uf8ff'),
-                limit(20)
-            );
-            const usersSnapshot = await getDocs(usersQuery);
+            const usersSnapshot = await getDocs(collection(db, "users"));
             window.allUsersCache = [];
             usersSnapshot.forEach(docSnap => {
                 if (docSnap.id !== window.currentUser?.uid) {
                     window.allUsersCache.push({ uid: docSnap.id, ...docSnap.data() });
                 }
             });
+        };
 
+        window.closeCreateGroupModal = function() {
+            document.getElementById('create-group-modal').classList.remove('show');
+        };
+
+        window.searchGroupMembers = function() {
+            const searchQuery = document.getElementById('group-member-search').value.toLowerCase();
+            const resultsDiv = document.getElementById('group-member-results');
             const filtered = window.allUsersCache.filter(user => {
+                const userNickname = (user.nickname || '').toLowerCase();
                 const alreadySelected = window.selectedGroupMembers.find(member => member.uid === user.uid);
-                return !alreadySelected;
+                return userNickname.includes(searchQuery) && !alreadySelected;
             });
-
-            if (filtered.length === 0) {
-                resultsDiv.innerHTML = '<p style="color:var(--text-secondary);padding:8px;">Никого не найдено</p>';
-            } else {
-                resultsDiv.innerHTML = filtered.map(user => `
-                    <div class="search-result-item" onclick="addGroupMember('${user.uid}', '${escapeHtml(user.nickname || user.email?.split('@')[0])}')">
-                        <img src="${getAvatarUrl(user.nickname || user.email, user.avatarStyle)}" width="32" height="32" style="border-radius:50%;">
-                        <span>${escapeHtml(user.nickname || user.email?.split('@')[0])}</span>
-                    </div>
-                `).join('');
-            }
+            resultsDiv.innerHTML = filtered.map(user => `
+                <div class="search-result-item" onclick="addGroupMember('${user.uid}', '${escapeHtml(user.nickname || user.email?.split('@')[0])}')">
+                    <img src="${getAvatarUrl(user.nickname || user.email, user.avatarStyle)}" width="32" height="32" style="border-radius:50%;">
+                    <span>${escapeHtml(user.nickname || user.email?.split('@')[0])}</span>
+                </div>
+            `).join('');
         };
 
         window.addGroupMember = function(uid, name) {
@@ -1739,8 +1718,6 @@
             const memberIds = [window.currentUser.uid, ...window.selectedGroupMembers.map(m => m.uid)];
 
             const chatRef = doc(collection(db, "chats"));
-            const chatId = chatRef.id;
-
             await setDoc(chatRef, {
                 name: groupName,
                 isGroup: true,
@@ -1751,27 +1728,16 @@
             const batch = writeBatch(db);
             memberIds.forEach(uid => {
                 const role = uid === window.currentUser.uid ? 'creator' : 'member';
-                batch.set(doc(collection(db, `chats/${chatId}/members`), uid), {
+                batch.set(doc(collection(db, `chats/${chatRef.id}/members`), uid), {
                     uid: uid,
                     role: role,
                     joinedAt: serverTimestamp()
-                });
-                batch.set(doc(db, `userChats/${uid}/chats`, chatId), {
-                    chatId: chatId,
-                    name: groupName,
-                    avatarUrl: getAvatarUrl(groupName),
-                    isGroup: true,
-                    otherUserId: null,
-                    lastMessage: '',
-                    lastMessageTime: serverTimestamp(),
-                    unreadCount: 0,
-                    updatedAt: serverTimestamp()
                 });
             });
             await batch.commit();
 
             document.getElementById('create-group-modal').classList.remove('show');
-            startGroupChat(chatId, groupName);
+            startGroupChat(chatRef.id, groupName);
         };
 
         // ================================================================
@@ -1809,47 +1775,14 @@
             return [window.currentUser.uid, window.currentChat.uid].sort().join('_');
         }
 
-        window.startChat = async function(uid, nickname, email) {
-            if (!window.currentUser) return;
-            const chatId = [window.currentUser.uid, uid].sort().join('_');
-
-            const myChatRef = doc(db, `userChats/${window.currentUser.uid}/chats`, chatId);
-            const myChatSnap = await getDoc(myChatRef);
-
-            if (!myChatSnap.exists()) {
-                const myName = window.currentUser.displayName || window.currentUser.email?.split('@')[0] || 'Пользователь';
-                const otherName = nickname || email?.split('@')[0] || 'Пользователь';
-
-                await setDoc(myChatRef, {
-                    chatId: chatId,
-                    name: otherName,
-                    avatarUrl: getAvatarUrl(nickname || email),
-                    isGroup: false,
-                    otherUserId: uid,
-                    lastMessage: '',
-                    lastMessageTime: serverTimestamp(),
-                    unreadCount: 0,
-                    updatedAt: serverTimestamp()
-                });
-
-                const otherRef = doc(db, `userChats/${uid}/chats`, chatId);
-                const otherSnap = await getDoc(otherRef);
-                if (!otherSnap.exists()) {
-                    await setDoc(otherRef, {
-                        chatId: chatId,
-                        name: myName,
-                        avatarUrl: getAvatarUrl(myName),
-                        isGroup: false,
-                        otherUserId: window.currentUser.uid,
-                        lastMessage: '',
-                        lastMessageTime: serverTimestamp(),
-                        unreadCount: 0,
-                        updatedAt: serverTimestamp()
-                    });
-                }
-            }
-
-            window.currentChat = { uid, nickname, email, isGroup: false, groupId: null };
+        window.startChat = function(uid, nickname, email) {
+            window.currentChat = {
+                uid: uid,
+                nickname: nickname,
+                email: email,
+                isGroup: false,
+                groupId: null
+            };
             window.replyTo = null;
             openChatScreen(nickname || email?.split('@')[0] || 'Пользователь', getAvatarUrl(nickname || email), false);
         };
@@ -2107,33 +2040,7 @@ window.sendMessage = async function() {
         if (window.typingTimeout) clearTimeout(window.typingTimeout);
         await deleteDoc(doc(db, "status", window.currentUser.uid + '_typing')).catch(() => {});
 
-        const preview = text.substring(0, 100);
-        if (window.currentChat.isGroup) {
-            const membersSnap = await getDocs(collection(db, `chats/${chatId}/members`));
-            const batch = writeBatch(db);
-            membersSnap.forEach(m => {
-                batch.update(doc(db, `userChats/${m.id}/chats`, chatId), {
-                    lastMessage: preview,
-                    lastMessageTime: serverTimestamp(),
-                    updatedAt: serverTimestamp()
-                });
-            });
-            await batch.commit();
-        } else {
-            const otherUid = window.currentChat.uid;
-            const batch = writeBatch(db);
-            batch.update(doc(db, `userChats/${window.currentUser.uid}/chats`, chatId), {
-                lastMessage: preview,
-                lastMessageTime: serverTimestamp(),
-                updatedAt: serverTimestamp()
-            });
-            batch.update(doc(db, `userChats/${otherUid}/chats`, chatId), {
-                lastMessage: preview,
-                lastMessageTime: serverTimestamp(),
-                updatedAt: serverTimestamp()
-            });
-            await batch.commit();
-        }
+        loadContacts(); // ← Вот правильная строка
     } catch (error) {
         console.error('Ошибка отправки сообщения:', error);
     }
@@ -2258,58 +2165,69 @@ window.sendMessage = async function() {
         // ================================================================
 async function loadContacts() {
     if (!window.currentUser) return;
+
     const container = document.getElementById('contacts-list');
-
+    
     try {
-        // БЕЗ orderBy — не требует индекса
-        const userChatsSnapshot = await getDocs(
-            collection(db, `userChats/${window.currentUser.uid}/chats`)
-        );
-
-        if (userChatsSnapshot.empty) {
-            container.innerHTML = '<div class="no-contacts">🔍 Используйте поиск,<br>чтобы найти собеседников</div>';
-            return;
-        }
-
-        // Сортируем на клиенте
-        const chats = [];
-        userChatsSnapshot.forEach(docSnap => chats.push(docSnap.data()));
-        chats.sort((a, b) => {
-            const ta = a.lastMessageTime?.toMillis?.() || 0;
-            const tb = b.lastMessageTime?.toMillis?.() || 0;
-            return tb - ta; // по убыванию
-        });
-
-        let listHTML = '';
-        chats.forEach(chat => {
-            if (chat.isGroup) {
-                listHTML += `
-                    <div class="contact-item" onclick="startGroupChat('${chat.chatId}', '${escapeHtml(chat.name || 'Группа')}')">
-                        <div class="avatar">
-                            <img src="${chat.avatarUrl || getAvatarUrl(chat.name || 'Группа')}" width="44" height="44" alt="">
-                        </div>
-                        <div class="contact-info">
-                            <div class="contact-name">👥 ${escapeHtml(chat.name || 'Группа')}</div>
-                            <div class="contact-lastmsg">${escapeHtml(chat.lastMessage || '')}</div>
-                        </div>
-                    </div>`;
-            } else {
-                listHTML += `
-                    <div class="contact-item" onclick="startChat('${chat.otherUserId}', '${escapeHtml(chat.name)}', '')">
-                        <div class="avatar">
-                            <img src="${chat.avatarUrl || getAvatarUrl(chat.name)}" width="44" height="44" alt="">
-                            <div class="online-dot offline" id="dot-${chat.otherUserId}"></div>
-                        </div>
-                        <div class="contact-info">
-                            <div class="contact-name">${escapeHtml(chat.name)}</div>
-                            <div class="contact-lastmsg">${escapeHtml(chat.lastMessage || '')}</div>
-                        </div>
-                    </div>`;
+        // Загружаем пользователей
+        const usersSnapshot = await getDocs(collection(db, "users"));
+        const contacts = [];
+        usersSnapshot.forEach(docSnap => {
+            if (docSnap.id !== window.currentUser.uid) {
+                contacts.push({ uid: docSnap.id, ...docSnap.data() });
             }
         });
 
-        container.innerHTML = listHTML;
-        updateOnlineDots();
+        // Загружаем группы, в которых состоит пользователь
+        const groupsSnapshot = await getDocs(query(collection(db, "chats"), where("isGroup", "==", true)));
+        const groups = [];
+        for (const groupDoc of groupsSnapshot.docs) {
+            const memberSnapshot = await getDocs(collection(db, `chats/${groupDoc.id}/members`));
+            const isMember = memberSnapshot.docs.find(docSnap => docSnap.id === window.currentUser.uid);
+            if (isMember) {
+                groups.push({ groupId: groupDoc.id, ...groupDoc.data() });
+            }
+        }
+
+        let listHTML = '';
+
+        // Группы
+        groups.forEach(group => {
+            listHTML += `
+                <div class="contact-item" onclick="startGroupChat('${group.groupId}', '${escapeHtml(group.name || 'Группа')}')">
+                    <div class="avatar">
+                        <img src="${getAvatarUrl(group.name || 'Группа')}" width="44" height="44" alt="">
+                    </div>
+                    <div class="contact-info">
+                        <div class="contact-name">👥 ${escapeHtml(group.name || 'Группа')}</div>
+                    </div>
+                </div>`;
+        });
+
+        // Пользователи
+        contacts.forEach(contact => {
+            listHTML += `
+                <div class="contact-item" onclick="startChat('${contact.uid}', '${escapeHtml(contact.nickname || contact.email?.split('@')[0])}', '${escapeHtml(contact.email)}')">
+                    <div class="avatar">
+                        <img src="${getAvatarUrl(contact.nickname || contact.email, contact.avatarStyle)}" width="44" height="44" alt="">
+                        <div class="online-dot offline" id="dot-${contact.uid}"></div>
+                    </div>
+                    <div class="contact-info">
+                        <div class="contact-name">${escapeHtml(contact.nickname || contact.email?.split('@')[0])}</div>
+                        <div class="contact-lastmsg">${escapeHtml(contact.bio || '')}</div>
+                    </div>
+                </div>`;
+        });
+
+        container.innerHTML = listHTML || '<div class="no-contacts">🔍 Используйте поиск,<br>чтобы найти собеседников</div>';
+
+        // Безопасно обновляем точки онлайна
+        try {
+            await updateOnlineDots();
+        } catch (e) {
+            // ничего не делаем, точки просто останутся серыми
+        }
+
     } catch (error) {
         console.error('Ошибка загрузки контактов:', error);
         container.innerHTML = '<div class="no-contacts">Ошибка загрузки контактов.</div>';
