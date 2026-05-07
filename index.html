@@ -1766,98 +1766,123 @@
             return messageUid === window.currentUser.uid;
         }
 
-        // ================================================================
-        // УПРАВЛЕНИЕ ЧАТАМИ
-        // ================================================================
-        function getChatId() {
-            if (!window.currentChat || !window.currentUser) return null;
-            if (window.currentChat.groupId) return window.currentChat.groupId;
-            return [window.currentUser.uid, window.currentChat.uid].sort().join('_');
-        }
+  // ================================================================
+// УПРАВЛЕНИЕ ЧАТАМИ
+// ================================================================
+function getChatId() {
+    if (!window.currentChat || !window.currentUser) return null;
+    if (window.currentChat.groupId) return window.currentChat.groupId;
+    return [window.currentUser.uid, window.currentChat.uid].sort().join('_');
+}
 
-        window.startChat = function(uid, nickname, email) {
-            window.currentChat = {
-                uid: uid,
-                nickname: nickname,
-                email: email,
+// ИСПРАВЛЕНО: теперь создаёт userChats при первом открытии
+window.startChat = async function(uid, nickname, email) {
+    if (!window.currentUser) return;
+    const chatId = [window.currentUser.uid, uid].sort().join('_');
+
+    const myChatRef = doc(db, `userChats/${window.currentUser.uid}/chats`, chatId);
+    const myChatSnap = await getDoc(myChatRef);
+
+    if (!myChatSnap.exists()) {
+        const myName = window.currentUser.displayName || window.currentUser.email?.split('@')[0] || 'Пользователь';
+        const otherName = nickname || email?.split('@')[0] || 'Пользователь';
+
+        await setDoc(myChatRef, {
+            chatId: chatId,
+            name: otherName,
+            avatarUrl: getAvatarUrl(nickname || email),
+            isGroup: false,
+            otherUserId: uid,
+            lastMessage: '',
+            lastMessageTime: serverTimestamp(),
+            unreadCount: 0,
+            updatedAt: serverTimestamp()
+        });
+
+        const otherRef = doc(db, `userChats/${uid}/chats`, chatId);
+        const otherSnap = await getDoc(otherRef);
+        if (!otherSnap.exists()) {
+            await setDoc(otherRef, {
+                chatId: chatId,
+                name: myName,
+                avatarUrl: getAvatarUrl(myName),
                 isGroup: false,
-                groupId: null
-            };
-            window.replyTo = null;
-            openChatScreen(nickname || email?.split('@')[0] || 'Пользователь', getAvatarUrl(nickname || email), false);
-        };
-
-        function startGroupChat(groupId, groupName) {
-            window.currentChat = {
-                uid: null,
-                nickname: null,
-                email: null,
-                isGroup: true,
-                groupId: groupId,
-                name: groupName
-            };
-            window.replyTo = null;
-            openChatScreen(groupName || 'Группа', getAvatarUrl(groupName || 'Группа'), true);
+                otherUserId: window.currentUser.uid,
+                lastMessage: '',
+                lastMessageTime: serverTimestamp(),
+                unreadCount: 0,
+                updatedAt: serverTimestamp()
+            });
         }
-        window.startGroupChat = startGroupChat;
+    }
 
-        async function openChatScreen(displayName, avatarUrl, isGroupChat) {
-            document.getElementById('welcome-screen').style.display = 'none';
-            document.getElementById('chat-screen').style.display = 'flex';
-            document.getElementById('chat-user-name').textContent = displayName;
-            document.getElementById('chat-avatar-img').src = avatarUrl;
-            document.getElementById('reply-bar').classList.remove('show');
-            document.getElementById('typing-indicator').style.display = 'none';
+    window.currentChat = { uid, nickname, email, isGroup: false, groupId: null };
+    window.replyTo = null;
+    openChatScreen(nickname || email?.split('@')[0] || 'Пользователь', getAvatarUrl(nickname || email), false);
+};
 
-            const chatId = getChatId();
+function startGroupChat(groupId, groupName) {
+    window.currentChat = { uid: null, nickname: null, email: null, isGroup: true, groupId, name: groupName };
+    window.replyTo = null;
+    openChatScreen(groupName || 'Группа', getAvatarUrl(groupName || 'Группа'), true);
+}
+window.startGroupChat = startGroupChat;
 
-            if (isGroupChat) {
-                document.getElementById('chat-user-status').textContent = 'группа';
-                document.getElementById('chat-user-status').className = 'chat-user-status';
-            } else {
-                const statusData = await getUserStatus(window.currentChat.uid);
-                updateChatHeaderStatus(statusData);
-            }
+async function openChatScreen(displayName, avatarUrl, isGroupChat) {
+    document.getElementById('welcome-screen').style.display = 'none';
+    document.getElementById('chat-screen').style.display = 'flex';
+    document.getElementById('chat-user-name').textContent = displayName;
+    document.getElementById('chat-avatar-img').src = avatarUrl;
+    document.getElementById('reply-bar').classList.remove('show');
+    document.getElementById('typing-indicator').style.display = 'none';
 
-            document.getElementById('main-container').classList.add('chat-open');
+    const chatId = getChatId();
 
-            watchTypingStatus(chatId);
-            loadMessages();
-            loadContacts();
+    if (isGroupChat) {
+        document.getElementById('chat-user-status').textContent = 'группа';
+        document.getElementById('chat-user-status').className = 'chat-user-status';
+    } else {
+        const statusData = await getUserStatus(window.currentChat.uid);
+        updateChatHeaderStatus(statusData);
+    }
+
+    document.getElementById('main-container').classList.add('chat-open');
+    watchTypingStatus(chatId);
+    loadMessages();
+    loadContacts();
+}
+
+function updateChatHeaderStatus(statusData) {
+    const statusElement = document.getElementById('chat-user-status');
+    if (statusData.online) {
+        statusElement.textContent = 'в сети';
+        statusElement.className = 'chat-user-status online';
+    } else {
+        const lastSeenDate = statusData.lastSeen?.toDate();
+        if (lastSeenDate) {
+            statusElement.textContent = 'был(а) ' + timeAgo(lastSeenDate);
+        } else {
+            statusElement.textContent = 'не в сети';
         }
+        statusElement.className = 'chat-user-status offline';
+    }
+}
 
-        function updateChatHeaderStatus(statusData) {
-            const statusElement = document.getElementById('chat-user-status');
-            if (statusData.online) {
-                statusElement.textContent = 'в сети';
-                statusElement.className = 'chat-user-status online';
-            } else {
-                const lastSeenDate = statusData.lastSeen?.toDate();
-                if (lastSeenDate) {
-                    statusElement.textContent = 'был(а) ' + timeAgo(lastSeenDate);
-                } else {
-                    statusElement.textContent = 'не в сети';
-                }
-                statusElement.className = 'chat-user-status offline';
-            }
-        }
+window.goBackToChatList = function() {
+    document.getElementById('main-container').classList.remove('chat-open');
+    window.currentChat = null;
+    document.getElementById('chat-screen').style.display = 'none';
+    document.getElementById('welcome-screen').style.display = 'block';
 
-        window.goBackToChatList = function() {
-            document.getElementById('main-container').classList.remove('chat-open');
-            window.currentChat = null;
-            document.getElementById('chat-screen').style.display = 'none';
-            document.getElementById('welcome-screen').style.display = 'block';
-
-            if (window.currentMessagesUnsubscribe) {
-                window.currentMessagesUnsubscribe();
-                window.currentMessagesUnsubscribe = null;
-            }
-            if (window.currentTypingUnsubscribe) {
-                window.currentTypingUnsubscribe();
-                window.currentTypingUnsubscribe = null;
-            }
-        };
-
+    if (window.currentMessagesUnsubscribe) {
+        window.currentMessagesUnsubscribe();
+        window.currentMessagesUnsubscribe = null;
+    }
+    if (window.currentTypingUnsubscribe) {
+        window.currentTypingUnsubscribe();
+        window.currentTypingUnsubscribe = null;
+    }
+};
         // ================================================================
         // ЗАГРУЗКА И ОТОБРАЖЕНИЕ СООБЩЕНИЙ
         // ================================================================
