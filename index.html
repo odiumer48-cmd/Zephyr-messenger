@@ -1713,33 +1713,46 @@
             `).join('');
         }
 
-        window.createGroupChat = async function() {
-            const groupName = document.getElementById('group-name').value.trim() || 'Новая группа';
-            const memberIds = [window.currentUser.uid, ...window.selectedGroupMembers.map(m => m.uid)];
+window.createGroupChat = async function() {
+    const groupName = document.getElementById('group-name').value.trim() || 'Новая группа';
+    const memberIds = [window.currentUser.uid, ...window.selectedGroupMembers.map(m => m.uid)];
 
-            const chatRef = doc(collection(db, "chats"));
-            await setDoc(chatRef, {
-                name: groupName,
-                isGroup: true,
-                createdBy: window.currentUser.uid,
-                createdAt: serverTimestamp()
-            });
+    const chatRef = doc(collection(db, "chats"));
+    const chatId = chatRef.id;
 
-            const batch = writeBatch(db);
-            memberIds.forEach(uid => {
-                const role = uid === window.currentUser.uid ? 'creator' : 'member';
-                batch.set(doc(collection(db, `chats/${chatRef.id}/members`), uid), {
-                    uid: uid,
-                    role: role,
-                    joinedAt: serverTimestamp()
-                });
-            });
-            await batch.commit();
+    await setDoc(chatRef, {
+        name: groupName,
+        isGroup: true,
+        createdBy: window.currentUser.uid,
+        createdAt: serverTimestamp()
+    });
 
-            document.getElementById('create-group-modal').classList.remove('show');
-            startGroupChat(chatRef.id, groupName);
-        };
+    const batch = writeBatch(db);
+    memberIds.forEach(uid => {
+        const role = uid === window.currentUser.uid ? 'creator' : 'member';
+        batch.set(doc(collection(db, `chats/${chatId}/members`), uid), {
+            uid: uid,
+            role: role,
+            joinedAt: serverTimestamp()
+        });
+        // Добавляем группу в список чатов каждого участника
+        batch.set(doc(db, `userChats/${uid}/chats`, chatId), {
+            chatId: chatId,
+            name: groupName,
+            avatarUrl: getAvatarUrl(groupName),
+            isGroup: true,
+            otherUserId: null,
+            lastMessage: '',
+            lastMessageTime: serverTimestamp(),
+            unreadCount: 0,
+            updatedAt: serverTimestamp()
+        });
+    });
+    await batch.commit();
 
+    document.getElementById('create-group-modal').classList.remove('show');
+    startGroupChat(chatId, groupName);
+};
         // ================================================================
         // ПОЛУЧЕНИЕ РОЛИ ПОЛЬЗОВАТЕЛЯ В ГРУППЕ
         // ================================================================
