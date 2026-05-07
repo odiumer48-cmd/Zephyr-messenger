@@ -2261,20 +2261,27 @@ async function loadContacts() {
     const container = document.getElementById('contacts-list');
 
     try {
-        const userChatsQuery = query(
-            collection(db, `userChats/${window.currentUser.uid}/chats`),
-            orderBy("lastMessageTime", "desc")
+        // БЕЗ orderBy — не требует индекса
+        const userChatsSnapshot = await getDocs(
+            collection(db, `userChats/${window.currentUser.uid}/chats`)
         );
-        const userChatsSnapshot = await getDocs(userChatsQuery);
 
         if (userChatsSnapshot.empty) {
             container.innerHTML = '<div class="no-contacts">🔍 Используйте поиск,<br>чтобы найти собеседников</div>';
             return;
         }
 
+        // Сортируем на клиенте
+        const chats = [];
+        userChatsSnapshot.forEach(docSnap => chats.push(docSnap.data()));
+        chats.sort((a, b) => {
+            const ta = a.lastMessageTime?.toMillis?.() || 0;
+            const tb = b.lastMessageTime?.toMillis?.() || 0;
+            return tb - ta; // по убыванию
+        });
+
         let listHTML = '';
-        userChatsSnapshot.forEach(docSnap => {
-            const chat = docSnap.data();
+        chats.forEach(chat => {
             if (chat.isGroup) {
                 listHTML += `
                     <div class="contact-item" onclick="startGroupChat('${chat.chatId}', '${escapeHtml(chat.name || 'Группа')}')">
