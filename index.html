@@ -2165,32 +2165,60 @@ window.sendMessage = async function() {
         // ================================================================
 async function loadContacts() {
     if (!window.currentUser) return;
-
     const container = document.getElementById('contacts-list');
-    
-    try {
-        // Загружаем пользователей
-        const usersSnapshot = await getDocs(collection(db, "users"));
-        const contacts = [];
-        usersSnapshot.forEach(docSnap => {
-            if (docSnap.id !== window.currentUser.uid) {
-                contacts.push({ uid: docSnap.id, ...docSnap.data() });
-            }
-        });
 
-        // Загружаем группы, в которых состоит пользователь
-        const groupsSnapshot = await getDocs(query(collection(db, "chats"), where("isGroup", "==", true)));
-        const groups = [];
-        for (const groupDoc of groupsSnapshot.docs) {
-            const memberSnapshot = await getDocs(collection(db, `chats/${groupDoc.id}/members`));
-            const isMember = memberSnapshot.docs.find(docSnap => docSnap.id === window.currentUser.uid);
-            if (isMember) {
-                groups.push({ groupId: groupDoc.id, ...groupDoc.data() });
-            }
+    try {
+        const userChatsQuery = query(
+            collection(db, `userChats/${window.currentUser.uid}/chats`),
+            orderBy("lastMessageTime", "desc")
+        );
+        
+        const userChatsSnapshot = await getDocs(userChatsQuery);
+        
+        if (userChatsSnapshot.empty) {
+            container.innerHTML = '<div class="no-contacts">🔍 Используйте поиск,<br>чтобы найти собеседников</div>';
+            return;
         }
 
         let listHTML = '';
+        
+        userChatsSnapshot.forEach(docSnap => {
+            const chat = docSnap.data();
+            
+            if (chat.isGroup) {
+                listHTML += `
+                    <div class="contact-item" onclick="startGroupChat('${chat.chatId}', '${escapeHtml(chat.name || 'Группа')}')">
+                        <div class="avatar">
+                            <img src="${chat.avatarUrl || getAvatarUrl(chat.name || 'Группа')}" width="44" height="44" alt="">
+                        </div>
+                        <div class="contact-info">
+                            <div class="contact-name">👥 ${escapeHtml(chat.name || 'Группа')}</div>
+                            <div class="contact-lastmsg">${escapeHtml(chat.lastMessage || '')}</div>
+                        </div>
+                    </div>`;
+            } else {
+                listHTML += `
+                    <div class="contact-item" onclick="startChat('${chat.otherUserId}', '${escapeHtml(chat.name)}', '')">
+                        <div class="avatar">
+                            <img src="${chat.avatarUrl || getAvatarUrl(chat.name)}" width="44" height="44" alt="">
+                            <div class="online-dot offline" id="dot-${chat.otherUserId}"></div>
+                        </div>
+                        <div class="contact-info">
+                            <div class="contact-name">${escapeHtml(chat.name)}</div>
+                            <div class="contact-lastmsg">${escapeHtml(chat.lastMessage || '')}</div>
+                        </div>
+                    </div>`;
+            }
+        });
 
+        container.innerHTML = listHTML;
+        updateOnlineDots();
+
+    } catch (error) {
+        console.error('Ошибка загрузки контактов:', error);
+        container.innerHTML = '<div class="no-contacts">Ошибка загрузки контактов.</div>';
+    }
+}
         // Группы
         groups.forEach(group => {
             listHTML += `
